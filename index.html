@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini AI 圖像生成體驗</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>穿越漫畫次元</h1>
+        <p>上傳一張你的照片，看看你在漫畫世界會長什麼樣！</p>
+        
+        <div class="upload-section">
+            <input type="file" id="imageInput" accept="image/*">
+            <button id="generateBtn">開始生成圖像</button>
+        </div>
+
+        <div class="result-section">
+            <div class="box">
+                <h3>原始圖片</h3>
+                <img id="previewImg" src="#" alt="預覽圖片" style="display:none;">
+            </div>
+            <div class="box">
+                <h3>AI 生成結果</h3>
+                <div id="loading" class="hidden">處理中...請稍候</div>
+                <img id="resultImg" src="#" alt="生成結果" style="display:none;">
+            </div>
+        </div>
+    </div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/generative-ai": "https://esm.run/@google/generative-ai"
+        }
+      }
+    </script>
+    <script type="module" src="app_web.js"></script>
+</body>
+</html>
