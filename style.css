@@ -57,3 +57,49 @@ button:hover {
 }
 
 .hidden { display: none; }
+
+/* 漫畫風倒數數字樣式 */
+.manga-countdown {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 120px;
+    font-family: 'Arial Black', sans-serif;
+    color: #fff;
+    -webkit-text-stroke: 4px #000;
+    text-shadow: 8px 8px 0px #000;
+    z-index: 10;
+    pointer-events: none;
+    display: none;
+}
+
+/* 倒數縮放與震動動畫 */
+.manga-countdown.animate {
+    animation: manga-pop 1s ease-out;
+}
+
+@keyframes manga-pop {
+    0% { transform: translate(-50%, -50%) scale(0.5) rotate(-10deg); opacity: 0; }
+    20% { transform: translate(-50%, -50%) scale(1.2) rotate(5deg); opacity: 1; }
+    40% { transform: translate(-50%, -50%) scale(1) rotate(-5deg); }
+    100% { transform: translate(-50%, -50%) scale(1.1) rotate(0deg); opacity: 0; }
+}
+
+/* 按鈕美化 */
+.button-group button {
+    margin: 5px;
+    padding: 12px 24px;
+    font-weight: bold;
+    cursor: pointer;
+    background-color: #000;
+    color: #fff;
+    border: 2px solid #000;
+    border-radius: 5px;
+    transition: 0.3s;
+}
+
+.button-group button:hover {
+    background-color: #fff;
+    color: #000;
+}

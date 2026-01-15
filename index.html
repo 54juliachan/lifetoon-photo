@@ -3,27 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini AI 圖像生成體驗</title>
+    <title>Gemini AI 漫畫濾鏡拍貼機</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <h1>穿越漫畫次元</h1>
-        <p>上傳一張你的照片，看看你在漫畫世界會長什麼樣！</p>
+        <p>按下拍攝，看看你在漫畫世界會長什麼樣！</p>
         
         <div class="upload-section">
-            <input type="file" id="imageInput" accept="image/*">
-            <button id="generateBtn">開始生成圖像</button>
+            <div id="camera-container" style="display:none; position: relative; width: 100%; max-width: 500px; margin: 0 auto 20px;">
+                <video id="webcam" autoplay playsinline style="width: 100%; border: 4px solid #000; border-radius: 10px;"></video>
+                <div id="countdown" class="manga-countdown">3</div>
+                <canvas id="snapshot" style="display:none;"></canvas>
+            </div>
+
+            <div class="button-group">
+                <button id="openCameraBtn">開啟相機</button>
+                <button id="takePhotoBtn" style="display:none;">立即拍攝 (3秒倒數)</button>
+                <input type="file" id="imageInput" accept="image/*" style="display:none;">
+                <button id="generateBtn" style="display:none;">開始生成漫畫像</button>
+            </div>
         </div>
 
         <div class="result-section">
             <div class="box">
-                <h3>原始圖片</h3>
+                <h3>原始照片</h3>
                 <img id="previewImg" src="#" alt="預覽圖片" style="display:none;">
             </div>
             <div class="box">
-                <h3>AI 生成結果</h3>
-                <div id="loading" class="hidden">處理中...請稍候</div>
+                <h3>AI 漫畫生成結果</h3>
+                <div id="loading" class="hidden">漫畫家作畫中...</div>
                 <img id="resultImg" src="#" alt="生成結果" style="display:none;">
             </div>
         </div>
