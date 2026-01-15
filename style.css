@@ -1,62 +1,36 @@
+/* 基礎版面設定 */
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f0f2f5;
+    font-family: "Microsoft JhengHei", sans-serif;
+    background-color: #f0f0f0;
     display: flex;
     justify-content: center;
     padding: 20px;
 }
 
 .container {
-    background: white;
+    background-color: white;
     padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
     max-width: 800px;
     width: 100%;
     text-align: center;
 }
 
-.upload-section {
-    margin: 20px 0;
-    padding: 20px;
-    border: 2px dashed #ccc;
-    border-radius: 8px;
+/* 相機預覽容器 */
+#camera-container {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto 20px;
 }
 
-.result-section {
-    display: flex;
-    gap: 20px;
-    margin-top: 30px;
+video {
+    width: 100%;
+    border: 4px solid #000;
+    border-radius: 10px;
+    display: block;
 }
-
-.box {
-    flex: 1;
-    min-height: 200px;
-    border: 1px solid #eee;
-    padding: 10px;
-}
-
-img {
-    max-width: 100%;
-    border-radius: 8px;
-    margin-top: 10px;
-}
-
-button {
-    background-color: #4285f4;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-}
-
-button:hover {
-    background-color: #357ae8;
-}
-
-.hidden { display: none; }
 
 /* 漫畫風倒數數字樣式 */
 .manga-countdown {
@@ -70,36 +44,83 @@ button:hover {
     -webkit-text-stroke: 4px #000;
     text-shadow: 8px 8px 0px #000;
     z-index: 10;
-    pointer-events: none;
     display: none;
+    pointer-events: none;
 }
 
-/* 倒數縮放與震動動畫 */
+/* 倒數動畫效果 */
 .manga-countdown.animate {
     animation: manga-pop 1s ease-out;
 }
 
 @keyframes manga-pop {
     0% { transform: translate(-50%, -50%) scale(0.5) rotate(-10deg); opacity: 0; }
-    20% { transform: translate(-50%, -50%) scale(1.2) rotate(5deg); opacity: 1; }
-    40% { transform: translate(-50%, -50%) scale(1) rotate(-5deg); }
+    50% { transform: translate(-50%, -50%) scale(1.2) rotate(5deg); opacity: 1; }
     100% { transform: translate(-50%, -50%) scale(1.1) rotate(0deg); opacity: 0; }
 }
 
-/* 按鈕美化 */
-.button-group button {
-    margin: 5px;
+/* 按鈕樣式組合 */
+.button-group {
+    margin: 20px 0;
+}
+
+button {
     padding: 12px 24px;
+    font-size: 16px;
     font-weight: bold;
     cursor: pointer;
-    background-color: #000;
-    color: #fff;
     border: 2px solid #000;
     border-radius: 5px;
     transition: 0.3s;
+    margin: 5px;
 }
 
-.button-group button:hover {
-    background-color: #fff;
-    color: #000;
+#openCameraBtn, #takePhotoBtn {
+    background-color: #000;
+    color: #fff;
+}
+
+#generateBtn {
+    background-color: #2ecc71;
+    color: white;
+}
+
+#removeBgBtn {
+    background-color: #f39c12;
+    color: white;
+}
+
+button:hover {
+    transform: scale(1.05);
+    opacity: 0.9;
+}
+
+button:disabled {
+    background-color: #ccc;
+    border-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* 結果展示區 */
+.result-section {
+    display: flex;
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.box {
+    flex: 1;
+    border: 2px dashed #ccc;
+    padding: 15px;
+    border-radius: 10px;
+}
+
+.box img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 5px;
+}
+
+.hidden {
+    display: none;
 }
