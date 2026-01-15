@@ -95,7 +95,7 @@ generateBtn.onclick = async () => {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
         const imagePart = await fileToGenerativePart(capturedFile);
-        const prompt = "Japanese B&W manga, clean line art, professional ink strokes, flatter facial planes, simplified nose/lips, stylized proportions. Portrait: strictly black and white only. Background: solid fluorescent green color (#00FF00).";
+        const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character.";
 
         const result = await model.generateContent([prompt, imagePart]);
         const response = await result.response;
@@ -114,19 +114,19 @@ generateBtn.onclick = async () => {
 };
 
 // 4. 自動去背
+// 修改後的去背邏輯
 removeBgBtn.onclick = async () => {
     removeBgBtn.disabled = true;
-    removeBgBtn.innerText = "⏳ 去背中...";
+    removeBgBtn.innerText = "⏳ 正在精細去背...";
     loading.classList.remove('hidden');
 
     try {
-        // 加入設定參數
+        // 修正後的 config 參數
         const config = {
-            model: "medium", // 使用中型模型提高精準度
+            model: "medium", 
             output: {
-                type: "image/png",
-                quality: 1.0,
-                format: "rgba" // 確保包含透明通道
+                format: "image/png", // 這裡必須是 image/png 才能支援透明
+                quality: 0.8
             }
         };
 
@@ -135,7 +135,7 @@ removeBgBtn.onclick = async () => {
         alert("精細去背完成！");
     } catch (error) {
         console.error("去背失敗:", error);
-        alert("去背失敗。");
+        alert("去背失敗，請檢查主控台訊息。");
     } finally {
         removeBgBtn.disabled = false;
         removeBgBtn.innerText = "✨ 自動去背";
