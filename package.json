@@ -1,0 +1,34 @@
+{
+  "name": "lifetoon_photo",
+  "version": "1.0.0",
+  "description": "Lifetoon Photobooth - AI Manga Portrait Generator",
+  "type": "module",
+  "main": "app_web.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/54juliachan/Lifetoon_photobooth.git"
+  },
+  "keywords": [
+    "AI",
+    "Gemini",
+    "Manga",
+    "Image-Generation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/54juliachan/Lifetoon_photobooth/issues"
+  },
+  "homepage": "https://github.com/54juliachan/Lifetoon_photobooth#readme",
+  "devDependencies": {
+    "vite": "^6.0.0"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0"
+  }
+}
