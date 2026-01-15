@@ -95,7 +95,7 @@ generateBtn.onclick = async () => {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
         const imagePart = await fileToGenerativePart(capturedFile);
-        const prompt = "Japanese B&W manga, clean ink lines, flat stylized facial proportions, expressive non-realistic eyes, solid light grey background.";
+        const prompt = "Japanese B&W manga, clean line art, professional ink strokes, flatter facial planes, simplified nose/lips, stylized proportions. Portrait: strictly black and white only. Background: solid fluorescent green color (#00FF00).";
 
         const result = await model.generateContent([prompt, imagePart]);
         const response = await result.response;
@@ -120,10 +120,21 @@ removeBgBtn.onclick = async () => {
     loading.classList.remove('hidden');
 
     try {
-        const blob = await removeBackground(resultImg.src);
+        // 加入設定參數
+        const config = {
+            model: "medium", // 使用中型模型提高精準度
+            output: {
+                type: "image/png",
+                quality: 1.0,
+                format: "rgba" // 確保包含透明通道
+            }
+        };
+
+        const blob = await removeBackground(resultImg.src, config);
         resultImg.src = URL.createObjectURL(blob);
-        alert("去背成功！");
+        alert("精細去背完成！");
     } catch (error) {
+        console.error("去背失敗:", error);
         alert("去背失敗。");
     } finally {
         removeBgBtn.disabled = false;
