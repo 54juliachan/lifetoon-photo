@@ -131,7 +131,7 @@ async function fileToGenerativePart(file) {
     return { inlineData: { data: await base64EncodedDataPromise, mimeType: file.type } };
 }
 
-// 4. 【核心新功能】純前端自動裁切綠幕
+// 4. 純前端自動裁切綠幕
 async function autoCropGreenScreen(base64Data, mimeType) {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -204,7 +204,7 @@ generateBtn.onclick = async () => {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
         const imagePart = await fileToGenerativePart(capturedFile);
-        const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a waist-up half-body portrait, holding a sheet of paper in their hands, with a surprised and delighted facial expression. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, with all shading represented using manga-style screentone dots only, no grayscale or soft gradients. The image should be in a vertical 3:4 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";         
+        const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a waist-up half-body portrait, holding a sheet of paper in their hands, with a surprised and delighted facial expression. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, shading represented using manga-style screentone dots. The image should be in a vertical 3:4 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";         
         const result = await model.generateContent([prompt, imagePart]);
         
         const response = await result.response;
@@ -257,8 +257,8 @@ removeBgBtn.onclick = async () => {
         const formData = new FormData();
         formData.append("image", base64Image);
 
-        // --- 新增這行：設定自動刪除時間 (單位為秒) ---
-        // 5 分鐘 = 300 秒，範圍可設定為 60 到 15552000 (180天)
+        // 設定自動刪除時間 (單位為秒) 
+        // 範圍可設定為 60 到 15552000 (180天)
         formData.append("expiration", 360);
 
         const response = await fetch(`https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`, {
@@ -323,7 +323,7 @@ async function combineImages(portraitUrl, templateUrl, decoUrl) {
                 const pWidth = canvas.width * scale;
                 const pHeight = (portraitImg.height / portraitImg.width) * pWidth;
                 const x = canvas.width - pWidth - 0; 
-                const y = canvas.height - pHeight - 95; 
+                const y = canvas.height - pHeight - 110; 
 
                 ctx.drawImage(portraitImg, x, y, pWidth, pHeight);
                 ctx.restore(); 
