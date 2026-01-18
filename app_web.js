@@ -5,8 +5,9 @@ const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 // --- 設定檔案路徑 ---
-const TEMPLATE_URL = './template.png';    
-const DECO_URL = './decoration.png';      
+// 使用 import 讓 Vite 能夠正確找到並載入圖片
+import TEMPLATE_URL from './template.png';
+import DECO_URL from './decoration.png';    
 
 // --- DOM 元素選取 ---
 const webcam = document.getElementById('webcam');
@@ -148,7 +149,43 @@ generateBtn.onclick = async () => {
         const part = response.candidates[0].content.parts[0];
 
         if (part.inlineData) {
-            resultImg.src = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+            // 1. 將 Gemini 的 Base64 轉為 Blob 物件
+            const base64Data = part.inlineData.data;
+            const binaryString = window.atob(base64Data);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            const geminiBlob = new Blob([bytes], { type: part.inlineData.mimeType });
+
+            // 2. 建立 FormData 並傳送給後端裁切伺服器
+            const formData = new FormData();
+            formData.append('image', geminiBlob, 'gemini_image.png');
+
+            try {
+                // 呼叫後端 API
+                const cropResponse = await fetch('http://localhost:3000/crop', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!cropResponse.ok) throw new Error('裁切伺服器回應錯誤');
+
+                // 3. 取得裁切後的圖片 Blob
+                const croppedBlob = await cropResponse.blob();
+                const croppedUrl = URL.createObjectURL(croppedBlob);
+
+                // 4. 顯示裁切後的結果 (這才是我們要拿去去背的圖)
+                resultImg.src = croppedUrl;
+                
+            } catch (serverError) {
+                console.warn("裁切伺服器連線失敗或無回應，降級使用原始圖片。", serverError);
+                // 備案：如果 Server 沒開或掛掉，至少還能顯示原圖
+                resultImg.src = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+            }
+
+            // 顯示圖片與按鈕
             resultImg.classList.remove('hidden');
             removeBgBtn.classList.remove('hidden');
         }
