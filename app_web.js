@@ -204,14 +204,8 @@ generateBtn.onclick = async () => {
 
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
-        
-        // --- 修正點：正確宣告 imagePart 變數 ---
         const imagePart = await fileToGenerativePart(capturedFile);
-        
-        // Prompt 保持不變
-        const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a waist-up half-body portrait, holding a sheet of paper in their hands, with a surprised and delighted facial expression. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, with all shading represented using manga-style screentone dots only, no grayscale or soft gradients. The image should be in a vertical 3:4 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";
-        
-        // --- 修正點：使用正確的變數名稱 imagePart ---
+        const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a waist-up half-body portrait, holding a sheet of paper in their hands, with a surprised and delighted facial expression. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, with all shading represented using manga-style screentone dots only, no grayscale or soft gradients. The image should be in a vertical 3:4 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";        
         const result = await model.generateContent([prompt, imagePart]);
         
         const response = await result.response;
@@ -247,10 +241,10 @@ removeBgBtn.onclick = async () => {
 
     try {
         const config = {
-            model: "medium", 
+            model: "large", 
             output: {
                 format: "image/png",
-                quality: 0.8
+                quality: 1.0
             }
         };
         const blob = await removeBackground(resultImg.src, config);
