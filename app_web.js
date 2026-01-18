@@ -1,13 +1,17 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { removeBackground } from "@imgly/background-removal";
 
+// --- 關鍵修正 1：使用 import 導入圖片，解決 404 找不到檔案的問題 ---
+// Vite 會自動處理這些圖片的路徑，無論是在開發模式還是打包後
+import templateSrc from './template.png';
+import decoSrc from './decoration.png';
+
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-// --- 設定檔案路徑 ---
-// 使用 import 讓 Vite 能夠正確找到並載入圖片
-import TEMPLATE_URL from './template.png';
-import DECO_URL from './decoration.png';    
+// 將導入的圖片路徑指定給變數
+const TEMPLATE_URL = templateSrc;
+const DECO_URL = decoSrc;
 
 // --- DOM 元素選取 ---
 const webcam = document.getElementById('webcam');
@@ -22,7 +26,7 @@ const previewImg = document.getElementById('previewImg');
 const resultImg = document.getElementById('resultImg');
 const loading = document.getElementById('loading');
 
-// 新增區塊控制元素
+// 介面區塊控制
 const resultArea = document.getElementById('resultArea');
 const previewBox = document.getElementById('previewBox');
 const resultBox = document.getElementById('resultBox');
@@ -69,7 +73,7 @@ takePhotoBtn.onclick = () => {
 function captureImage() {
     const context = snapshotCanvas.getContext('2d');
     
-    // 強制設定畫布為 3:4 比例
+    // 設定畫布為 3:4 比例
     const targetWidth = 600;
     const targetHeight = 800;
     snapshotCanvas.width = targetWidth;
@@ -103,10 +107,9 @@ function captureImage() {
     snapshotCanvas.toBlob((blob) => {
         capturedFile = new File([blob], "selfie.jpg", { type: "image/jpeg" });
         
-        // 逐步顯示介面：顯示結果區域與原始照片
         resultArea.classList.remove('hidden');
         previewBox.classList.remove('hidden');
-        resultBox.classList.add('hidden'); // 生成前確保 AI 框隱藏
+        resultBox.classList.add('hidden'); 
 
         previewImg.src = URL.createObjectURL(capturedFile);
         previewImg.classList.remove('hidden');
@@ -121,7 +124,7 @@ function captureImage() {
     }, 'image/jpeg');
 }
 
-// 3. AI 生成邏輯 (模型與 Prompt 嚴禁改動)
+// 3. AI 生成邏輯
 async function fileToGenerativePart(file) {
     const base64EncodedDataPromise = new Promise((resolve) => {
         const reader = new FileReader();
@@ -134,7 +137,6 @@ async function fileToGenerativePart(file) {
 generateBtn.onclick = async () => {
     if (!capturedFile) return alert("請先拍攝照片！");
     
-    // 逐步顯示介面：顯示 AI 結果框
     resultBox.classList.remove('hidden');
     loading.classList.remove('hidden');
     resultImg.classList.add('hidden');
@@ -144,12 +146,15 @@ generateBtn.onclick = async () => {
         const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
         const imagePart = await fileToGenerativePart(capturedFile);
         const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a waist-up half-body portrait, holding a sheet of paper in their hands, with a surprised and delighted facial expression. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background.";
+        
         const result = await model.generateContent([prompt, imagePart]);
         const response = await result.response;
         const part = response.candidates[0].content.parts[0];
 
         if (part.inlineData) {
-            // 1. 將 Gemini 的 Base64 轉為 Blob 物件
+            // --- 關鍵修正 2：呼叫後端裁切伺服器 ---
+            
+            // A. 將 Base64 轉為 Blob
             const base64Data = part.inlineData.data;
             const binaryString = window.atob(base64Data);
             const len = binaryString.length;
@@ -159,39 +164,36 @@ generateBtn.onclick = async () => {
             }
             const geminiBlob = new Blob([bytes], { type: part.inlineData.mimeType });
 
-            // 2. 建立 FormData 並傳送給後端裁切伺服器
+            // B. 傳送給後端 (localhost:3000)
             const formData = new FormData();
-            formData.append('image', geminiBlob, 'gemini_image.png');
+            formData.append('image', geminiBlob, 'gemini_result.png');
 
             try {
-                // 呼叫後端 API
-                const cropResponse = await fetch('http://localhost:3000/crop', {
-                    method: 'POST',
-                    body: formData
-                });
+                // 注意：這行只能在本地端運行 (npm run dev)，Vercel 上會失敗
+                const cropResponse = await fetch('/api/crop', { // 直接指向 Vercel 的 API 路徑
+    method: 'POST',
+    body: formData
+});
 
                 if (!cropResponse.ok) throw new Error('裁切伺服器回應錯誤');
 
-                // 3. 取得裁切後的圖片 Blob
+                // C. 取得裁切後的圖片
                 const croppedBlob = await cropResponse.blob();
-                const croppedUrl = URL.createObjectURL(croppedBlob);
-
-                // 4. 顯示裁切後的結果 (這才是我們要拿去去背的圖)
-                resultImg.src = croppedUrl;
+                resultImg.src = URL.createObjectURL(croppedBlob);
+                console.log("裁切成功，顯示裁切後圖片");
                 
             } catch (serverError) {
-                console.warn("裁切伺服器連線失敗或無回應，降級使用原始圖片。", serverError);
-                // 備案：如果 Server 沒開或掛掉，至少還能顯示原圖
+                console.warn("無法連線到裁切伺服器 (請確認 node server.js 有在執行，且不要在 Vercel 上測試)", serverError);
+                // 備案：如果 Server 沒開，顯示原圖
                 resultImg.src = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
             }
 
-            // 顯示圖片與按鈕
             resultImg.classList.remove('hidden');
             removeBgBtn.classList.remove('hidden');
         }
     } catch (error) {
         console.error("AI 生成失敗:", error);
-        alert("AI 生成失敗，請確認 API Key 是否正確。");
+        alert("AI 生成失敗，請確認 API Key。");
     } finally {
         loading.classList.add('hidden');
     }
@@ -211,15 +213,18 @@ removeBgBtn.onclick = async () => {
                 quality: 0.8
             }
         };
+        // 對目前的圖片 (可能是裁切過或原圖) 進行去背
         const blob = await removeBackground(resultImg.src, config);
         const portraitUrl = URL.createObjectURL(blob);
+        
+        // 傳入正確的 TEMPLATE_URL (已透過 import 解析)
         const finalPngUrl = await combineImages(portraitUrl, TEMPLATE_URL, DECO_URL);
         
         resultImg.src = finalPngUrl;
         alert("完成！肖像已疊加並轉換為黑白藝術風格。");
     } catch (error) {
         console.error("處理失敗:", error);
-        alert("處理過程中發生錯誤，請檢查底圖與裝飾圖檔案是否存在。");
+        alert("處理過程中發生錯誤，請看 Console 錯誤訊息。");
     } finally {
         removeBgBtn.disabled = false;
         removeBgBtn.innerText = "✨ 自動去背";
@@ -235,6 +240,11 @@ async function combineImages(portraitUrl, templateUrl, decoUrl) {
         const portraitImg = new Image();
         const decoImg = new Image();
         
+        // 設定 crossOrigin 以避免跨域汙染畫布 (雖然本地檔案通常不需要，但保險起見)
+        templateImg.crossOrigin = "anonymous";
+        portraitImg.crossOrigin = "anonymous";
+        decoImg.crossOrigin = "anonymous";
+
         templateImg.src = templateUrl;
         templateImg.onload = () => {
             canvas.width = templateImg.width;
@@ -259,10 +269,10 @@ async function combineImages(portraitUrl, templateUrl, decoUrl) {
                     ctx.drawImage(decoImg, 0, 0, canvas.width, canvas.height);
                     resolve(canvas.toDataURL('image/png'));
                 };
-                decoImg.onerror = () => reject("載入裝飾圖失敗。");
+                decoImg.onerror = () => reject(`載入裝飾圖失敗: ${decoUrl}`);
             };
-            portraitImg.onerror = () => reject("載入肖像圖失敗。");
+            portraitImg.onerror = () => reject(`載入肖像圖失敗: ${portraitUrl}`);
         };
-        templateImg.onerror = () => reject("載入底圖失敗。");
+        templateImg.onerror = () => reject(`載入底圖失敗: ${templateUrl}`);
     });
 }
