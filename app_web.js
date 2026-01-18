@@ -204,19 +204,22 @@ generateBtn.onclick = async () => {
 
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
-        constPk = await fileToGenerativePart(capturedFile);
         
-        // --- 這裡已經更新為您指定的新 Prompt ---
+        // --- 修正點：正確宣告 imagePart 變數 ---
+        const imagePart = await fileToGenerativePart(capturedFile);
+        
+        // Prompt 保持不變
         const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a waist-up half-body portrait, holding a sheet of paper in their hands, with a surprised and delighted facial expression. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, with all shading represented using manga-style screentone dots only, no grayscale or soft gradients. The image should be in a vertical 3:4 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";
         
-        const result = await model.generateContent([prompt, constPk]);
+        // --- 修正點：使用正確的變數名稱 imagePart ---
+        const result = await model.generateContent([prompt, imagePart]);
+        
         const response = await result.response;
         const part = response.candidates[0].content.parts[0];
 
         if (part.inlineData) {
-            // --- 改用前端自動裁切 ---
             try {
-                // 直接在瀏覽器執行裁切，不再呼叫 fetch('/api/crop')
+                // 使用前端自動裁切
                 const croppedDataUrl = await autoCropGreenScreen(part.inlineData.data, part.inlineData.mimeType);
                 resultImg.src = croppedDataUrl;
                 console.log("前端裁切成功！");
