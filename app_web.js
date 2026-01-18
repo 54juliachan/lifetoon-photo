@@ -1,19 +1,17 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { removeBackground } from "@imgly/background-removal";
 
-// --- 關鍵修正 1：使用 import 導入圖片，解決 404 找不到檔案的問題 ---
-// Vite 會自動處理這些圖片的路徑，無論是在開發模式還是打包後
+// 導入圖片
 import templateSrc from './template.png';
 import decoSrc from './decoration.png';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-// 將導入的圖片路徑指定給變數
 const TEMPLATE_URL = templateSrc;
 const DECO_URL = decoSrc;
 
-// --- DOM 元素選取 ---
+// --- DOM 元素 ---
 const webcam = document.getElementById('webcam');
 const snapshotCanvas = document.getElementById('snapshot');
 const openCameraBtn = document.getElementById('openCameraBtn');
@@ -21,15 +19,13 @@ const takePhotoBtn = document.getElementById('takePhotoBtn');
 const cameraContainer = document.getElementById('camera-container');
 const countdownDisplay = document.getElementById('countdown');
 const generateBtn = document.getElementById('generateBtn');
-const removeBgBtn = document.getElementById('removeBgBtn');
 const previewImg = document.getElementById('previewImg');
 const resultImg = document.getElementById('resultImg');
 const loading = document.getElementById('loading');
-
-// 介面區塊控制
 const resultArea = document.getElementById('resultArea');
 const previewBox = document.getElementById('previewBox');
 const resultBox = document.getElementById('resultBox');
+const removeBgBtn = document.getElementById('removeBgBtn');
 
 let capturedFile = null;
 
@@ -46,7 +42,7 @@ openCameraBtn.onclick = async () => {
     }
 };
 
-// 2. 倒數計時拍照
+// 2. 拍照倒數
 takePhotoBtn.onclick = () => {
     let count = 3;
     takePhotoBtn.disabled = true;
@@ -72,19 +68,15 @@ takePhotoBtn.onclick = () => {
 
 function captureImage() {
     const context = snapshotCanvas.getContext('2d');
-    
-    // 設定畫布為 3:4 比例
     const targetWidth = 600;
     const targetHeight = 800;
     snapshotCanvas.width = targetWidth;
     snapshotCanvas.height = targetHeight;
 
-    // 處理鏡像反轉
     context.save();
     context.translate(targetWidth, 0);
     context.scale(-1, 1);
 
-    // 計算視訊裁切區域 (Object-fit: cover 邏輯)
     const videoRatio = webcam.videoWidth / webcam.videoHeight;
     const targetRatio = targetWidth / targetHeight;
     let sw, sh, sx, sy;
@@ -110,7 +102,6 @@ function captureImage() {
         resultArea.classList.remove('hidden');
         previewBox.classList.remove('hidden');
         resultBox.classList.add('hidden'); 
-
         previewImg.src = URL.createObjectURL(capturedFile);
         previewImg.classList.remove('hidden');
         generateBtn.classList.remove('hidden');
@@ -124,7 +115,7 @@ function captureImage() {
     }, 'image/jpeg');
 }
 
-// 3. AI 生成邏輯
+// 3. 輔助函式：檔案轉 Base64
 async function fileToGenerativePart(file) {
     const base64EncodedDataPromise = new Promise((resolve) => {
         const reader = new FileReader();
@@ -134,6 +125,75 @@ async function fileToGenerativePart(file) {
     return { inlineData: { data: await base64EncodedDataPromise, mimeType: file.type } };
 }
 
+// 4. 【核心新功能】純前端自動裁切綠幕
+async function autoCropGreenScreen(base64Data, mimeType) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.src = `data:${mimeType};base64,${base64Data}`;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            let minX = canvas.width, minY = canvas.height,VX = 0,VY = 0;
+
+            // 掃描所有像素，找出「不是綠色」的範圍
+            for (let y = 0; y < canvas.height; y++) {
+                for (let x = 0; x < canvas.width; x++) {
+                    const i = (y * canvas.width + x) * 4;
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+
+                    // 判斷是否為「螢光綠」 (R與B很低，G很高)
+                    // 這裡設定一個寬鬆的門檻，避免邊緣有些微雜訊
+                    const isGreen = (g > 200 && r < 100 && b < 100);
+
+                    if (!isGreen) {
+                        if (x < minX) minX = x;
+                        if (x > VX) VX = x;
+                        if (y < minY) minY = y;
+                        if (y >VY) VY = y;
+                    }
+                }
+            }
+
+            // 如果整張都是綠的（沒偵測到人），就回傳原圖
+            if (minX > VX) {
+                resolve(img.src);
+                return;
+            }
+
+            // 加上一點邊距 (Padding)
+            const padding = 20;
+            minX = Math.max(0, minX - padding);
+            minY = Math.max(0, minY - padding);
+            VX = Math.min(canvas.width, VX + padding);
+            VY = Math.min(canvas.height, VY + padding);
+            
+            const cropWidth = VX - minX;
+            const cropHeight = VY - minY;
+
+            // 建立新的裁切後 Canvas
+            const cropCanvas = document.createElement('canvas');
+            cropCanvas.width = cropWidth;
+            cropCanvas.height = cropHeight;
+            const cropCtx = cropCanvas.getContext('2d');
+
+            cropCtx.drawImage(canvas, minX, minY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+            
+            // 轉回 URL
+            resolve(cropCanvas.toDataURL('image/png'));
+        };
+        img.onerror = (e) => reject(e);
+    });
+}
+
+// 5. 生成按鈕邏輯
 generateBtn.onclick = async () => {
     if (!capturedFile) return alert("請先拍攝照片！");
     
@@ -144,46 +204,24 @@ generateBtn.onclick = async () => {
 
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
-        const imagePart = await fileToGenerativePart(capturedFile);
-        const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a waist-up half-body portrait, holding a sheet of paper in their hands, with a surprised and delighted facial expression. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, with all shading represented using manga-style screentone dots only, no grayscale or soft gradients. The image should be in a vertical 3:4 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";        
-        const result = await model.generateContent([prompt, imagePart]);
+        constPk = await fileToGenerativePart(capturedFile);
+        
+        // --- 這裡已經更新為您指定的新 Prompt ---
+        const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a waist-up half-body portrait, holding a sheet of paper in their hands, with a surprised and delighted facial expression. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, with all shading represented using manga-style screentone dots only, no grayscale or soft gradients. The image should be in a vertical 3:4 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";
+        
+        const result = await model.generateContent([prompt, constPk]);
         const response = await result.response;
         const part = response.candidates[0].content.parts[0];
 
         if (part.inlineData) {
-            // --- 關鍵修正 2：呼叫後端裁切伺服器 ---
-            
-            // A. 將 Base64 轉為 Blob
-            const base64Data = part.inlineData.data;
-            const binaryString = window.atob(base64Data);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            const geminiBlob = new Blob([bytes], { type: part.inlineData.mimeType });
-
-            // B. 傳送給後端 (localhost:3000)
-            const formData = new FormData();
-            formData.append('image', geminiBlob, 'gemini_result.png');
-
+            // --- 改用前端自動裁切 ---
             try {
-                // 注意：這行只能在本地端運行 (npm run dev)，Vercel 上會失敗
-                const cropResponse = await fetch('/api/crop', { // 直接指向 Vercel 的 API 路徑
-    method: 'POST',
-    body: formData
-});
-
-                if (!cropResponse.ok) throw new Error('裁切伺服器回應錯誤');
-
-                // C. 取得裁切後的圖片
-                const croppedBlob = await cropResponse.blob();
-                resultImg.src = URL.createObjectURL(croppedBlob);
-                console.log("裁切成功，顯示裁切後圖片");
-                
-            } catch (serverError) {
-                console.warn("無法連線到裁切伺服器 (請確認 node server.js 有在執行，且不要在 Vercel 上測試)", serverError);
-                // 備案：如果 Server 沒開，顯示原圖
+                // 直接在瀏覽器執行裁切，不再呼叫 fetch('/api/crop')
+                const croppedDataUrl = await autoCropGreenScreen(part.inlineData.data, part.inlineData.mimeType);
+                resultImg.src = croppedDataUrl;
+                console.log("前端裁切成功！");
+            } catch (cropErr) {
+                console.warn("裁切失敗，使用原圖", cropErr);
                 resultImg.src = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
             }
 
@@ -198,7 +236,7 @@ generateBtn.onclick = async () => {
     }
 };
 
-// 4. 自動去背 + 合成
+// 6. 去背與合成
 removeBgBtn.onclick = async () => {
     removeBgBtn.disabled = true;
     removeBgBtn.innerText = "⏳ 正在處理影像...";
@@ -212,18 +250,15 @@ removeBgBtn.onclick = async () => {
                 quality: 0.8
             }
         };
-        // 對目前的圖片 (可能是裁切過或原圖) 進行去背
         const blob = await removeBackground(resultImg.src, config);
         const portraitUrl = URL.createObjectURL(blob);
-        
-        // 傳入正確的 TEMPLATE_URL (已透過 import 解析)
         const finalPngUrl = await combineImages(portraitUrl, TEMPLATE_URL, DECO_URL);
         
         resultImg.src = finalPngUrl;
-        alert("完成！肖像已疊加並轉換為黑白藝術風格。");
+        alert("完成！");
     } catch (error) {
         console.error("處理失敗:", error);
-        alert("處理過程中發生錯誤，請看 Console 錯誤訊息。");
+        alert("處理過程中發生錯誤");
     } finally {
         removeBgBtn.disabled = false;
         removeBgBtn.innerText = "✨ 自動去背";
@@ -239,7 +274,6 @@ async function combineImages(portraitUrl, templateUrl, decoUrl) {
         const portraitImg = new Image();
         const decoImg = new Image();
         
-        // 設定 crossOrigin 以避免跨域汙染畫布 (雖然本地檔案通常不需要，但保險起見)
         templateImg.crossOrigin = "anonymous";
         portraitImg.crossOrigin = "anonymous";
         decoImg.crossOrigin = "anonymous";
