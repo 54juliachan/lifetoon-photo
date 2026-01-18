@@ -20,16 +20,19 @@ body {
 /* 相機預覽容器 */
 #camera-container {
     position: relative;
-    width: 100%;
-    max-width: 500px;
+    width: 300px; /* 固定寬度 */
+    height: 400px; /* 符合 3:4 */
     margin: 0 auto 20px;
+    overflow: hidden;
+    border: 4px solid #000;
+    border-radius: 10px;
 }
 
 video {
     width: 100%;
-    border: 4px solid #000;
-    border-radius: 10px;
-    display: block;
+    height: 100%;
+    object-fit: cover; /* 填滿容器並裁切 */
+    transform: scaleX(-1); /* 左右鏡像 */
 }
 
 /* 漫畫風倒數數字樣式 */
@@ -123,4 +126,18 @@ button:disabled {
 
 .hidden {
     display: none;
+}
+
+/* 引導圖層樣式 */
+.guide-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* 確保與 video 的裁切方式一致 */
+    pointer-events: none; /* 讓點擊事件穿透，不影響操作 */
+    z-index: 5; /* 位於 video 之上，countdown 之下 */
+    opacity: 0.7; /* 設定半透明方便對齊，可依需求調整 */
+
 }

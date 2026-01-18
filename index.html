@@ -14,6 +14,7 @@
         <div class="upload-section">
             <div id="camera-container">
                 <video id="webcam" autoplay playsinline></video>
+                <img id="guideOverlay" src="./guide.png" class="guide-overlay">
                 <div id="countdown" class="manga-countdown">3</div>
                 <canvas id="snapshot" class="hidden"></canvas>
             </div>
@@ -25,12 +26,12 @@
             </div>
         </div>
 
-        <div class="result-section">
-            <div class="box">
+        <div id="resultArea" class="result-section hidden">
+            <div id="previewBox" class="box hidden">
                 <h3>原始照片</h3>
                 <img id="previewImg" src="#" class="hidden">
             </div>
-            <div class="box">
+            <div id="resultBox" class="box hidden">
                 <h3>AI 漫畫生成結果</h3>
                 <div id="loading" class="hidden">漫畫家作畫中...</div>
                 <img id="resultImg" src="#" class="hidden">
