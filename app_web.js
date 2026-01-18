@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { removeBackground } from "@imgly/background-removal";
+import QRCode from 'qrcode'; // 引入 QR Code 套件
 
 // 導入圖片
 import templateSrc from './template.png';
@@ -26,6 +27,11 @@ const resultArea = document.getElementById('resultArea');
 const previewBox = document.getElementById('previewBox');
 const resultBox = document.getElementById('resultBox');
 const removeBgBtn = document.getElementById('removeBgBtn');
+
+// QR Code 相關元素
+const qrcodeContainer = document.getElementById('qrcode-container');
+const qrcodeElement = document.getElementById('qrcode');
+const downloadLink = document.getElementById('downloadLink');
 
 let capturedFile = null;
 
@@ -139,36 +145,30 @@ async function autoCropGreenScreen(base64Data, mimeType) {
 
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const data = imageData.data;
-            let minX = canvas.width, minY = canvas.height,VX = 0,VY = 0;
+            let minX = canvas.width, minY = canvas.height, VX = 0, VY = 0;
 
-            // 掃描所有像素，找出「不是綠色」的範圍
             for (let y = 0; y < canvas.height; y++) {
                 for (let x = 0; x < canvas.width; x++) {
                     const i = (y * canvas.width + x) * 4;
                     const r = data[i];
                     const g = data[i + 1];
                     const b = data[i + 2];
-
-                    // 判斷是否為「螢光綠」 (R與B很低，G很高)
-                    // 這裡設定一個寬鬆的門檻，避免邊緣有些微雜訊
                     const isGreen = (g > 200 && r < 100 && b < 100);
 
                     if (!isGreen) {
                         if (x < minX) minX = x;
                         if (x > VX) VX = x;
                         if (y < minY) minY = y;
-                        if (y >VY) VY = y;
+                        if (y > VY) VY = y;
                     }
                 }
             }
 
-            // 如果整張都是綠的（沒偵測到人），就回傳原圖
             if (minX > VX) {
                 resolve(img.src);
                 return;
             }
 
-            // 加上一點邊距 (Padding)
             const padding = 20;
             minX = Math.max(0, minX - padding);
             minY = Math.max(0, minY - padding);
@@ -178,15 +178,12 @@ async function autoCropGreenScreen(base64Data, mimeType) {
             const cropWidth = VX - minX;
             const cropHeight = VY - minY;
 
-            // 建立新的裁切後 Canvas
             const cropCanvas = document.createElement('canvas');
             cropCanvas.width = cropWidth;
             cropCanvas.height = cropHeight;
             const cropCtx = cropCanvas.getContext('2d');
 
             cropCtx.drawImage(canvas, minX, minY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-            
-            // 轉回 URL
             resolve(cropCanvas.toDataURL('image/png'));
         };
         img.onerror = (e) => reject(e);
@@ -201,11 +198,13 @@ generateBtn.onclick = async () => {
     loading.classList.remove('hidden');
     resultImg.classList.add('hidden');
     removeBgBtn.classList.add('hidden');
+    // 重置 QR Code 容器
+    if (qrcodeContainer) qrcodeContainer.classList.add('hidden');
 
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
         const imagePart = await fileToGenerativePart(capturedFile);
-        const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a waist-up half-body portrait, holding a sheet of paper in their hands, with a surprised and delighted facial expression. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, with all shading represented using manga-style screentone dots only, no grayscale or soft gradients. The image should be in a vertical 3:4 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";        
+        const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a waist-up half-body portrait, holding a sheet of paper in their hands, with a surprised and delighted facial expression. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, with all shading represented using manga-style screentone dots only, no grayscale or soft gradients. The image should be in a vertical 3:4 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";         
         const result = await model.generateContent([prompt, imagePart]);
         
         const response = await result.response;
@@ -213,7 +212,6 @@ generateBtn.onclick = async () => {
 
         if (part.inlineData) {
             try {
-                // 使用前端自動裁切
                 const croppedDataUrl = await autoCropGreenScreen(part.inlineData.data, part.inlineData.mimeType);
                 resultImg.src = croppedDataUrl;
                 console.log("前端裁切成功！");
@@ -233,7 +231,7 @@ generateBtn.onclick = async () => {
     }
 };
 
-// 6. 去背與合成
+// 6. 去背與合成 + ImgBB 上傳
 removeBgBtn.onclick = async () => {
     removeBgBtn.disabled = true;
     removeBgBtn.innerText = "⏳ 正在處理影像...";
@@ -252,7 +250,43 @@ removeBgBtn.onclick = async () => {
         const finalPngUrl = await combineImages(portraitUrl, TEMPLATE_URL, DECO_URL);
         
         resultImg.src = finalPngUrl;
-        alert("完成！");
+
+        // --- ImgBB 上傳與 QR Code 產生邏輯 ---
+        removeBgBtn.innerText = "☁️ 正在產生 QR Code...";
+        const base64Image = finalPngUrl.split(',')[1];
+        const formData = new FormData();
+        formData.append("image", base64Image);
+
+        // --- 新增這行：設定自動刪除時間 (單位為秒) ---
+        // 5 分鐘 = 300 秒，範圍可設定為 60 到 15552000 (180天)
+        formData.append("expiration", 360);
+
+        const response = await fetch(`https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`, {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            const downloadUrl = data.data.url;
+
+            // 產生 QR Code
+            qrcodeElement.innerHTML = ''; 
+            const canvas = document.createElement('canvas');
+            await QRCode.toCanvas(canvas, downloadUrl, {
+                width: 200,
+                margin: 2
+            });
+            qrcodeElement.appendChild(canvas);
+
+            // 顯示結果與下載連結
+            qrcodeContainer.classList.remove('hidden');
+            downloadLink.href = downloadUrl;
+            alert("合成成功！可掃描 QR Code 下載電子檔。");
+        } else {
+            throw new Error("上傳到 ImgBB 失敗");
+        }
     } catch (error) {
         console.error("處理失敗:", error);
         alert("處理過程中發生錯誤");
