@@ -1,8 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { removeBackground } from "@imgly/background-removal";
-import QRCode from 'qrcode'; // 引入 QR Code 套件
+import QRCode from 'qrcode';
 
-// 導入圖片
 import templateSrc from './template.png';
 import decoSrc from './decoration.png';
 
@@ -17,19 +16,23 @@ const webcam = document.getElementById('webcam');
 const snapshotCanvas = document.getElementById('snapshot');
 const openCameraBtn = document.getElementById('openCameraBtn');
 const takePhotoBtn = document.getElementById('takePhotoBtn');
+const generateBtn = document.getElementById('generateBtn');
+const homeBtn = document.getElementById('homeBtn'); 
 const cameraContainer = document.getElementById('camera-container');
 const countdownDisplay = document.getElementById('countdown');
-const generateBtn = document.getElementById('generateBtn');
 const previewImg = document.getElementById('previewImg');
 const resultImg = document.getElementById('resultImg');
 const loading = document.getElementById('loading');
 const resultArea = document.getElementById('resultArea');
 const previewBox = document.getElementById('previewBox');
 const resultBox = document.getElementById('resultBox');
-const removeBgBtn = document.getElementById('removeBgBtn');
 
-// QR Code 相關元素
-const qrcodeContainer = document.getElementById('qrcode-container');
+// 佔位框與內容元素
+const imagePlaceholder = document.getElementById('image-placeholder');
+const imageLoadingText = document.getElementById('image-loading-text');
+const qrPlaceholder = document.getElementById('qr-placeholder');
+const qrLoadingText = document.getElementById('qr-loading-text');
+const qrcodeContent = document.getElementById('qrcode-content');
 const qrcodeElement = document.getElementById('qrcode');
 const downloadLink = document.getElementById('downloadLink');
 
@@ -106,7 +109,7 @@ function captureImage() {
         capturedFile = new File([blob], "selfie.jpg", { type: "image/jpeg" });
         
         resultArea.classList.remove('hidden');
-        previewBox.classList.remove('hidden');
+        previewBox.classList.remove('hidden'); 
         resultBox.classList.add('hidden'); 
         previewImg.src = URL.createObjectURL(capturedFile);
         previewImg.classList.remove('hidden');
@@ -190,113 +193,7 @@ async function autoCropGreenScreen(base64Data, mimeType) {
     });
 }
 
-// 5. 生成按鈕邏輯
-generateBtn.onclick = async () => {
-    if (!capturedFile) return alert("請先拍攝照片！");
-    
-    resultBox.classList.remove('hidden');
-    loading.classList.remove('hidden');
-    resultImg.classList.add('hidden');
-    removeBgBtn.classList.add('hidden');
-    // 重置 QR Code 容器
-    if (qrcodeContainer) qrcodeContainer.classList.add('hidden');
-
-    try {
-        const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
-        const imagePart = await fileToGenerativePart(capturedFile);
-        const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a portrait from the hips up, holding a sheet of paper in their hands, with a surprised and delighted facial expression. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, shading represented using manga-style screentone dots. The image should be in a vertical 3:5 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";         
-        const result = await model.generateContent([prompt, imagePart]);
-        
-        const response = await result.response;
-        const part = response.candidates[0].content.parts[0];
-
-        if (part.inlineData) {
-            try {
-                const croppedDataUrl = await autoCropGreenScreen(part.inlineData.data, part.inlineData.mimeType);
-                resultImg.src = croppedDataUrl;
-                console.log("前端裁切成功！");
-            } catch (cropErr) {
-                console.warn("裁切失敗，使用原圖", cropErr);
-                resultImg.src = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-            }
-
-            resultImg.classList.remove('hidden');
-            removeBgBtn.classList.remove('hidden');
-        }
-    } catch (error) {
-        console.error("AI 生成失敗:", error);
-        alert("AI 生成失敗，請確認 API Key。");
-    } finally {
-        loading.classList.add('hidden');
-    }
-};
-
-// 6. 去背與合成 + ImgBB 上傳
-removeBgBtn.onclick = async () => {
-    removeBgBtn.disabled = true;
-    removeBgBtn.innerText = "⏳ 正在處理影像...";
-    loading.classList.remove('hidden');
-
-    try {
-        const config = {
-            model: "large", 
-            output: {
-                format: "image/png",
-                quality: 1.0
-            }
-        };
-        const blob = await removeBackground(resultImg.src, config);
-        const portraitUrl = URL.createObjectURL(blob);
-        const finalPngUrl = await combineImages(portraitUrl, TEMPLATE_URL, DECO_URL);
-        
-        resultImg.src = finalPngUrl;
-
-        // --- ImgBB 上傳與 QR Code 產生邏輯 ---
-        removeBgBtn.innerText = "☁️ 正在產生 QR Code...";
-        const base64Image = finalPngUrl.split(',')[1];
-        const formData = new FormData();
-        formData.append("image", base64Image);
-
-        // 設定自動刪除時間 (單位為秒) 
-        // 範圍可設定為 60 到 15552000 (180天)
-        formData.append("expiration", 600);
-
-        const response = await fetch(`https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`, {
-            method: "POST",
-            body: formData
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            const downloadUrl = data.data.url;
-
-            // 產生 QR Code
-            qrcodeElement.innerHTML = ''; 
-            const canvas = document.createElement('canvas');
-            await QRCode.toCanvas(canvas, downloadUrl, {
-                width: 200,
-                margin: 2
-            });
-            qrcodeElement.appendChild(canvas);
-
-            // 顯示結果與下載連結
-            qrcodeContainer.classList.remove('hidden');
-            downloadLink.href = downloadUrl;
-            alert("合成成功！可掃描 QR Code 下載電子檔。");
-        } else {
-            throw new Error("上傳到 ImgBB 失敗");
-        }
-    } catch (error) {
-        console.error("處理失敗:", error);
-        alert("處理過程中發生錯誤");
-    } finally {
-        removeBgBtn.disabled = false;
-        removeBgBtn.innerText = "✨ 自動去背";
-        loading.classList.add('hidden');
-    }
-};
-
+// 5. 圖片合成邏輯
 async function combineImages(portraitUrl, templateUrl, decoUrl) {
     return new Promise((resolve, reject) => {
         const canvas = document.createElement('canvas');
@@ -319,7 +216,6 @@ async function combineImages(portraitUrl, templateUrl, decoUrl) {
             portraitImg.onload = () => {
                 ctx.save(); 
                 ctx.filter = 'grayscale(100%) contrast(120%)';
-                // --- 修改後的邏輯：以高度為基準縮放 70% ---
                 const scale = 0.7; 
                 const pHeight = canvas.height * scale;
                 const pWidth = (portraitImg.width / portraitImg.height) * pHeight;
@@ -341,3 +237,120 @@ async function combineImages(portraitUrl, templateUrl, decoUrl) {
         templateImg.onerror = () => reject(`載入底圖失敗: ${templateUrl}`);
     });
 }
+
+// 6. 一鍵全自動處理邏輯
+generateBtn.onclick = async () => {
+    if (!capturedFile) return alert("請先拍攝照片！");
+    
+    // 初始化 UI，進入處理狀態
+    generateBtn.classList.add('hidden'); 
+    openCameraBtn.classList.add('hidden'); 
+    previewBox.classList.add('hidden');    
+    
+    resultBox.classList.remove('hidden');
+    loading.classList.remove('hidden');
+    homeBtn.classList.add('hidden');
+    
+    // 重置左右佔位框的狀態 (顯示等待文字，隱藏內容)
+    resultImg.classList.add('hidden');
+    imageLoadingText.classList.remove('hidden');
+    imagePlaceholder.style.backgroundColor = '#e0e0e0'; // 確保背景為灰色
+    
+    qrcodeContent.classList.add('hidden');
+    qrLoadingText.classList.remove('hidden');
+    qrPlaceholder.style.backgroundColor = '#e0e0e0'; 
+
+    try {
+        // --- 階段 1：AI 漫畫生成 ---
+        loading.innerText = "🎨 AI 漫畫家作畫中 (約需 10-15 秒)...";
+        const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
+        const imagePart = await fileToGenerativePart(capturedFile);
+        
+        const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a portrait from the hips up, holding a sheet of paper in their hands, with a surprised and delighted facial expression. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, shading represented using manga-style screentone dots. The image should be in a vertical 3:5 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";         
+        
+        const result = await model.generateContent([prompt, imagePart]);
+        const response = await result.response;
+        const part = response.candidates[0].content.parts[0];
+
+        if (!part.inlineData) throw new Error("AI 生成失敗，未回傳有效圖片");
+
+        let currentImgDataUrl;
+        try {
+            currentImgDataUrl = await autoCropGreenScreen(part.inlineData.data, part.inlineData.mimeType);
+        } catch (cropErr) {
+            console.warn("裁切失敗，使用原圖", cropErr);
+            currentImgDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        }
+
+        // --- 階段 2：智慧去背與圖層合成 ---
+        loading.innerText = "✨ 正在自動去背與合成拍貼排版...";
+        const config = {
+            model: "large", 
+            output: { format: "image/png", quality: 1.0 }
+        };
+        const blob = await removeBackground(currentImgDataUrl, config);
+        const portraitUrl = URL.createObjectURL(blob);
+        const finalPngUrl = await combineImages(portraitUrl, TEMPLATE_URL, DECO_URL);
+        
+        // 圖片處理完成：更新左側區塊
+        resultImg.src = finalPngUrl;
+        imageLoadingText.classList.add('hidden'); // 隱藏等待文字
+        resultImg.classList.remove('hidden');     // 顯示圖片
+        imagePlaceholder.style.backgroundColor = 'transparent'; // 去除佔位灰底
+
+        // --- 階段 3：ImgBB 上傳與產生 QR Code ---
+        loading.innerText = "☁️ 正在上傳雲端並產生下載連結...";
+        const base64Image = finalPngUrl.split(',')[1];
+        const formData = new FormData();
+        formData.append("image", base64Image);
+        formData.append("expiration", 600); 
+
+        const uploadResponse = await fetch(`https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`, {
+            method: "POST",
+            body: formData
+        });
+
+        const uploadData = await uploadResponse.json();
+
+        if (uploadData.success) {
+            const downloadUrl = uploadData.data.url;
+
+            // 產生 QR Code
+            qrcodeElement.innerHTML = ''; 
+            const canvas = document.createElement('canvas');
+            await QRCode.toCanvas(canvas, downloadUrl, {
+                width: 200,
+                margin: 2
+            });
+            qrcodeElement.appendChild(canvas);
+
+            // 上傳完成：更新右側區塊
+            qrLoadingText.classList.add('hidden'); // 隱藏等待文字
+            qrcodeContent.classList.remove('hidden'); // 顯示 QR Code 內容
+            qrPlaceholder.style.backgroundColor = '#f9f9f9'; // 背景換成較亮的底色
+
+            loading.innerText = "🎉 處理完成！請掃描右側 QR Code 儲存圖片。";
+            
+            // 流程結束，顯示置底的回到主頁按鈕
+            homeBtn.classList.remove('hidden'); 
+            
+        } else {
+            throw new Error("上傳到 ImgBB 失敗");
+        }
+
+    } catch (error) {
+        console.error("處理過程中發生錯誤:", error);
+        loading.innerText = "❌ 處理失敗，請重試或確認網路連線。";
+        alert("處理過程中發生錯誤，請查看主控台。");
+        
+        // 失敗復原
+        generateBtn.classList.remove('hidden'); 
+        openCameraBtn.classList.remove('hidden'); 
+        previewBox.classList.remove('hidden');
+    }
+};
+
+// 7. 回到主頁邏輯
+homeBtn.onclick = () => {
+    window.location.reload();
+};

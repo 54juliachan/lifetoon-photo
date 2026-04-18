@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gemini AI 漫畫拍貼機</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
 </head>
 <body>
     <div class="container">
@@ -22,7 +23,7 @@
             <div class="button-group">
                 <button id="openCameraBtn">開啟相機</button>
                 <button id="takePhotoBtn" class="hidden">立即拍攝 (3秒倒數)</button>
-                <button id="generateBtn" class="hidden">開始生成漫畫像</button>
+                <button id="generateBtn" class="hidden">確認照片並全自動處理</button>
             </div>
         </div>
 
@@ -31,17 +32,34 @@
                 <h3>原始照片</h3>
                 <img id="previewImg" src="#" class="hidden">
             </div>
-            <div id="resultBox" class="box hidden">
-                <h3>AI 漫畫生成結果</h3>
-                <div id="loading" class="hidden">漫畫家作畫中...</div>
-                <img id="resultImg" src="#" class="hidden">
-                <button id="removeBgBtn" class="hidden">✨ 自動去背</button>
-                <div id="qrcode-container" class="hidden" style="margin-top: 20px; text-align: center;">
-                    <p>掃描 QR Code 下載漫畫肖像：</p>
-                    <div id="qrcode" style="display: flex; justify-content: center; margin: 10px 0;"></div>
-                    <a id="downloadLink" href="#" target="_blank" style="color: #4CAF50; text-decoration: underline;">點此開啟圖片</a>
+            
+            <div id="resultBox" class="box hidden" style="width: 100%;">
+                <h3>漫畫拍貼結果</h3>
+                <div id="loading" class="hidden" style="margin-bottom: 15px; font-weight: bold; color: #333;">處理中...</div>
+                
+                <div id="final-layout" style="display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; gap: 30px; margin-top: 20px;">
+                    
+                    <div id="image-placeholder" style="flex: 1 1 300px; min-height: 400px; background-color: #e0e0e0; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                        <span id="image-loading-text" style="color: #666; font-weight: bold; font-size: 16px;">⏳ 圖片生成中...</span>
+                        <img id="resultImg" src="#" class="hidden" style="max-width: 100%; height: auto; border-radius: 8px;">
+                    </div>
+                    
+                    <div id="qr-placeholder" style="flex: 1 1 200px; min-height: 400px; background-color: #e0e0e0; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                        <span id="qr-loading-text" style="color: #666; font-weight: bold; font-size: 16px;">⏳ 等待雲端上傳...</span>
+                        
+                        <div id="qrcode-content" class="hidden" style="text-align: center; width: 100%;">
+                            <p style="font-weight: bold; font-size: 18px; margin-bottom: 15px;">掃描下載專屬漫畫！</p>
+                            <div id="qrcode" style="display: flex; justify-content: center; margin-bottom: 15px; background-color: white; padding: 10px; border-radius: 8px;"></div>
+                            <a id="downloadLink" href="#" target="_blank" style="color: #4CAF50; text-decoration: underline; font-weight: bold;">點此開啟雲端原圖</a>
+                        </div>
+                    </div>
+                    
                 </div>
             </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px;">
+            <button id="homeBtn" class="hidden" style="background-color: #3498db; color: white; padding: 12px 40px; font-size: 18px; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">回到主頁</button>
         </div>
     </div>
     <script type="module" src="/app_web.js"></script>
