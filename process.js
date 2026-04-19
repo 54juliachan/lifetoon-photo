@@ -198,7 +198,6 @@ generateBtn.onclick = async () => {
             const downloadUrl = uploadData.data.url;
 
             // 儲存結果並跳轉到結果頁
-            sessionStorage.setItem('finalPngData', finalPngUrl);
             sessionStorage.setItem('finalResultUrl', downloadUrl);
             
             window.location.href = 'result.html';
