@@ -3,14 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini AI 漫畫拍貼機</title>
+    <title>Lifetoon | 穿越漫畫次元拍貼機</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Oswald:wght@500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="data:;base64,iVBORw0KGgo=">
 </head>
 <body>
     <div class="container">
-        <h1>穿越漫畫次元</h1>
-        <p>按下拍攝，AI 將為你繪製專屬漫畫像！</p>
+        <header>
+            <h1>穿越漫畫次元</h1>
+            <p>按下拍攝，AI 將為你繪製專屬漫畫像！</p>
+        </header>
         
         <div class="upload-section">
             <div id="camera-container">
@@ -30,36 +35,36 @@
         <div id="resultArea" class="result-section hidden">
             <div id="previewBox" class="box hidden">
                 <h3>原始照片</h3>
-                <img id="previewImg" src="#" class="hidden">
+                <div class="img-frame">
+                    <img id="previewImg" src="#" class="hidden">
+                </div>
             </div>
             
-            <div id="resultBox" class="box hidden" style="width: 100%;">
+            <div id="resultBox" class="box hidden">
                 <h3>漫畫拍貼結果</h3>
-                <div id="loading" class="hidden" style="margin-bottom: 15px; font-weight: bold; color: #333;">處理中...</div>
+                <div id="loading" class="hidden">處理中...</div>
                 
-                <div id="final-layout" style="display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; gap: 30px; margin-top: 20px;">
-                    
-                    <div id="image-placeholder" style="flex: 1 1 300px; min-height: 400px; background-color: #e0e0e0; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                        <span id="image-loading-text" style="color: #666; font-weight: bold; font-size: 16px;">⏳ 圖片生成中...</span>
-                        <img id="resultImg" src="#" class="hidden" style="max-width: 100%; height: auto; border-radius: 8px;">
+                <div id="final-layout">
+                    <div id="image-placeholder">
+                        <span id="image-loading-text">⏳ 圖片生成中...</span>
+                        <img id="resultImg" src="#" class="hidden">
                     </div>
                     
-                    <div id="qr-placeholder" style="flex: 1 1 200px; min-height: 400px; background-color: #e0e0e0; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                        <span id="qr-loading-text" style="color: #666; font-weight: bold; font-size: 16px;">⏳ 等待雲端上傳...</span>
+                    <div id="qr-placeholder">
+                        <span id="qr-loading-text">⏳ 等待雲端上傳...</span>
                         
-                        <div id="qrcode-content" class="hidden" style="text-align: center; width: 100%;">
-                            <p style="font-weight: bold; font-size: 18px; margin-bottom: 15px;">掃描下載專屬漫畫！</p>
-                            <div id="qrcode" style="display: flex; justify-content: center; margin-bottom: 15px; background-color: white; padding: 10px; border-radius: 8px;"></div>
-                            <a id="downloadLink" href="#" target="_blank" style="color: #4CAF50; text-decoration: underline; font-weight: bold;">點此開啟雲端原圖</a>
+                        <div id="qrcode-content" class="hidden">
+                            <p class="qr-title">掃描下載專屬漫畫！</p>
+                            <div id="qrcode"></div>
+                            <a id="downloadLink" href="#" target="_blank">點此開啟雲端原圖</a>
                         </div>
                     </div>
-                    
                 </div>
             </div>
         </div>
 
-        <div style="text-align: center; margin-top: 40px;">
-            <button id="homeBtn" class="hidden" style="background-color: #3498db; color: white; padding: 12px 40px; font-size: 18px; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">回到主頁</button>
+        <div class="footer-actions">
+            <button id="homeBtn" class="hidden">回到主頁</button>
         </div>
     </div>
     <script type="module" src="/app_web.js"></script>

@@ -1,131 +1,216 @@
-/* 基礎版面設定 */
-body {
-    font-family: "Microsoft JhengHei", sans-serif;
-    background-color: #f0f0f0;
-    display: flex;
-    justify-content: center;
-    padding: 20px;
+/* 引入官方網站使用的字體 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Oswald:wght@500;700;900&display=swap');
+
+/* 定義 Lifetoon 專屬色彩變數 */
+:root {
+    --manga-yellow: #FFDF00;
+    --manga-black: #0A0A0A;
+    --manga-white: #FAFAFA;
+    --manga-gray: #E5E5E5;
 }
 
+/* 基礎版面設定：加入漫畫網點背景 */
+body {
+    font-family: 'Noto Sans TC', sans-serif;
+    color: var(--manga-black);
+    background-color: var(--manga-white);
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+    min-height: 100vh;
+    position: relative; /* 讓偽元素能相對於 body 定位 */
+}
+
+/* 使用偽元素製作低透明度網點，不影響文字內容 */
+body::before {
+    content: "";
+    position: fixed; /* 固定背景，捲動時背景不動 */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1; /* 確保背景在文字下方 */
+    
+    /* 以下是 .bg-halftone 的同款代碼 */
+    background-image: radial-gradient(#0A0A0A 15%, transparent 16%), 
+                      radial-gradient(#0A0A0A 15%, transparent 16%);
+    background-size: 20px 20px;
+    background-position: 0 0, 10px 10px;
+    opacity: 0.05;
+    pointer-events: none; /* 確保背景層不會干擾鼠標點擊 */
+}
+
+/* 主容器：漫畫分鏡框風格 */
 .container {
-    background-color: white;
-    padding: 30px;
-    border-radius: 15px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    background-color: var(--manga-white);
+    padding: 40px;
+    border: 4px solid var(--manga-black);
+    box-shadow: 12px 12px 0px 0px var(--manga-black);
     max-width: 800px;
     width: 100%;
     text-align: center;
+    position: relative;
 }
 
-/* 相機預覽容器 */
+/* 標題排版：強烈視覺張力 */
+h1 {
+    font-family: 'Oswald', 'Noto Sans TC', sans-serif;
+    font-weight: 900;
+    font-size: 2.5rem;
+    color: var(--manga-black);
+    background-color: var(--manga-yellow);
+    display: inline-block;
+    padding: 5px 20px;
+    border: 4px solid var(--manga-black);
+    transform: rotate(-2deg);
+    margin-top: 0;
+    margin-bottom: 10px;
+    box-shadow: 4px 4px 0px 0px var(--manga-black);
+}
+
+p {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 30px;
+}
+
+/* 相機預覽容器：拍立得/分鏡感 */
 #camera-container {
     position: relative;
-    width: 300px; /* 固定寬度 */
-    height: 500px; /* 符合 3:5 */
-    margin: 0 auto 20px;
+    width: 300px; 
+    height: 500px; 
+    margin: 0 auto 30px;
     overflow: hidden;
-    border: 4px solid #000;
-    border-radius: 10px;
+    background-color: var(--manga-black);
+    border: 4px solid var(--manga-black);
+    box-shadow: 8px 8px 0px 0px var(--manga-black);
 }
 
 video {
     width: 100%;
     height: 100%;
-    object-fit: cover; /* 填滿容器並裁切 */
-    transform: scaleX(-1); /* 左右鏡像 */
+    object-fit: cover; 
+    transform: scaleX(-1); 
 }
 
-/* 漫畫風倒數數字樣式 */
+/* 漫畫風倒數數字樣式：保留原本的誇張動畫 */
 .manga-countdown {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     font-size: 120px;
-    font-family: 'Arial Black', sans-serif;
-    color: #fff;
-    -webkit-text-stroke: 4px #000;
-    text-shadow: 8px 8px 0px #000;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 900;
+    color: var(--manga-yellow);
+    -webkit-text-stroke: 4px var(--manga-black);
+    text-shadow: 8px 8px 0px var(--manga-black);
     z-index: 10;
     display: none;
     pointer-events: none;
 }
 
-/* 倒數動畫效果 */
 .manga-countdown.animate {
-    animation: manga-pop 1s ease-out;
+    animation: manga-pop 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 @keyframes manga-pop {
-    0% { transform: translate(-50%, -50%) scale(0.5) rotate(-10deg); opacity: 0; }
-    50% { transform: translate(-50%, -50%) scale(1.2) rotate(5deg); opacity: 1; }
-    100% { transform: translate(-50%, -50%) scale(1.1) rotate(0deg); opacity: 0; }
+    0% { transform: translate(-50%, -50%) scale(0.5) rotate(-15deg); opacity: 0; }
+    50% { transform: translate(-50%, -50%) scale(1.3) rotate(10deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 0; }
 }
 
-/* 按鈕樣式組合 */
+/* 按鈕樣式組合：硬派立體感 */
 .button-group {
     margin: 20px 0;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
 }
 
 button {
-    padding: 12px 24px;
-    font-size: 16px;
-    font-weight: bold;
+    font-family: 'Noto Sans TC', sans-serif;
+    padding: 12px 28px;
+    font-size: 18px;
+    font-weight: 900;
     cursor: pointer;
-    border: 2px solid #000;
-    border-radius: 5px;
-    transition: 0.3s;
-    margin: 5px;
+    border: 4px solid var(--manga-black);
+    background-color: var(--manga-white);
+    color: var(--manga-black);
+    transition: all 0.1s ease-in-out;
+    box-shadow: 4px 4px 0px 0px var(--manga-black);
+    text-transform: uppercase;
 }
 
-#openCameraBtn, #takePhotoBtn {
-    background-color: #000;
-    color: #fff;
+button:hover:not(:disabled) {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0px 0px var(--manga-black);
 }
 
-#generateBtn {
-    background-color: #2ecc71;
-    color: white;
-}
-
-#removeBgBtn {
-    background-color: #f39c12;
-    color: white;
-}
-
-button:hover {
-    transform: scale(1.05);
-    opacity: 0.9;
+button:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px 0px var(--manga-black);
 }
 
 button:disabled {
-    background-color: #ccc;
-    border-color: #ccc;
+    background-color: var(--manga-gray);
+    color: #888;
     cursor: not-allowed;
+    box-shadow: 4px 4px 0px 0px #888;
+    border-color: #888;
 }
 
-/* 結果展示區 */
+/* 特定按鈕顏色覆蓋 */
+#takePhotoBtn { background-color: var(--manga-black); color: var(--manga-yellow); }
+#takePhotoBtn:hover:not(:disabled) { background-color: #333; }
+
+#generateBtn { background-color: var(--manga-yellow); }
+#generateBtn:hover:not(:disabled) { background-color: #ffed4a; }
+
+/* 回首頁按鈕（覆蓋 index.html 中的 inline style） */
+#homeBtn {
+    background-color: var(--manga-black) !important;
+    color: var(--manga-white) !important;
+    border-radius: 0 !important;
+}
+
+/* 結果展示區：框線化 */
 .result-section {
     display: flex;
+    flex-direction: column;
     gap: 20px;
-    margin-top: 30px;
+    margin-top: 40px;
+    border-top: 4px dashed var(--manga-black);
+    padding-top: 30px;
 }
 
 .box {
-    flex: 1;
-    border: 2px dashed #ccc;
-    padding: 15px;
-    border-radius: 10px;
+    border: 4px solid var(--manga-black);
+    padding: 20px;
+    background-color: var(--manga-white);
+    box-shadow: 8px 8px 0px 0px var(--manga-black);
+}
+
+.box h3 {
+    margin-top: 0;
+    font-weight: 900;
+    background-color: var(--manga-black);
+    color: var(--manga-white);
+    display: inline-block;
+    padding: 4px 12px;
+    margin-bottom: 20px;
 }
 
 .box img {
     max-width: 100%;
     height: auto;
-    border-radius: 5px;
+    border: 4px solid var(--manga-black); /* 給圖片加上外框 */
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 /* 引導圖層樣式 */
@@ -135,9 +220,25 @@ button:disabled {
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover; /* 確保與 video 的裁切方式一致 */
-    pointer-events: none; /* 讓點擊事件穿透，不影響操作 */
-    z-index: 5; /* 位於 video 之上，countdown 之下 */
-    opacity: 0.7; /* 設定半透明方便對齊，可依需求調整 */
+    object-fit: cover; 
+    pointer-events: none; 
+    z-index: 5; 
+    opacity: 0.8; /* 稍微提高透明度讓線條更明顯 */
+    filter: drop-shadow(2px 2px 0px rgba(0,0,0,0.5)); /* 讓引導線在明亮背景也看得清 */
+}
 
+/* 針對 index.html 裡的 inline-style 佔位框進行強制覆寫 */
+#image-placeholder, #qr-placeholder {
+    border: 4px solid var(--manga-black) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background-color: var(--manga-white) !important;
+    background-image: repeating-linear-gradient(45deg, #f0f0f0 25%, transparent 25%, transparent 75%, #f0f0f0 75%, #f0f0f0), repeating-linear-gradient(45deg, #f0f0f0 25%, var(--manga-white) 25%, var(--manga-white) 75%, #f0f0f0 75%, #f0f0f0) !important;
+    background-position: 0 0, 10px 10px !important;
+    background-size: 20px 20px !important;
+}
+
+#qrcode {
+    border: 4px solid var(--manga-black) !important;
+    border-radius: 0 !important;
 }
