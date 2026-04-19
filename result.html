@@ -36,17 +36,19 @@
         const resultImg = document.getElementById('resultImg');
         const qrcodeElement = document.getElementById('qrcode');
 
-        // 從 Session 取出資料
-        const finalPngData = sessionStorage.getItem('finalPngData');
+        // 從 Session 取出雲端網址
         const downloadUrl = sessionStorage.getItem('finalResultUrl');
 
-        if (finalPngData && downloadUrl) {
-            resultImg.src = finalPngData;
+        if (downloadUrl) {
+            // ✅ 直接將結果圖片的來源設為 ImgBB 的雲端網址
+            resultImg.src = downloadUrl;
+            
             // 產生 QR Code
             QRCode.toCanvas(document.createElement('canvas'), downloadUrl, { width: 200 }, (err, canvas) => {
                 qrcodeElement.appendChild(canvas);
             });
         } else {
+            alert("找不到結果圖片，請重新拍攝");
             window.location.href = 'index.html'; // 防呆
         }
     </script>
