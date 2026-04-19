@@ -3,18 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Lifetoon | 穿越漫畫次元拍貼機</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Oswald:wght@500;700;900&display=swap" rel="stylesheet">
+    <title>Lifetoon | 1. 拍攝照片</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
 </head>
 <body>
     <div class="container">
         <header>
             <h1>穿越漫畫次元</h1>
-            <p>按下拍攝，AI 將為你繪製專屬漫畫像！</p>
+            <p>第一步：對準框線，按下拍攝！</p>
         </header>
         
         <div class="upload-section">
@@ -28,45 +24,86 @@
             <div class="button-group">
                 <button id="openCameraBtn">開啟相機</button>
                 <button id="takePhotoBtn" class="hidden">立即拍攝 (3秒倒數)</button>
-                <button id="generateBtn" class="hidden">確認照片並全自動處理</button>
             </div>
-        </div>
-
-        <div id="resultArea" class="result-section hidden">
-            <div id="previewBox" class="box hidden">
-                <h3>原始照片</h3>
-                <div class="img-frame">
-                    <img id="previewImg" src="#" class="hidden">
-                </div>
-            </div>
-            
-            <div id="resultBox" class="box hidden">
-                <h3>漫畫拍貼結果</h3>
-                <div id="loading" class="hidden">處理中...</div>
-                
-                <div id="final-layout">
-                    <div id="image-placeholder">
-                        <span id="image-loading-text">⏳ 圖片生成中...</span>
-                        <img id="resultImg" src="#" class="hidden">
-                    </div>
-                    
-                    <div id="qr-placeholder">
-                        <span id="qr-loading-text">⏳ 等待雲端上傳...</span>
-                        
-                        <div id="qrcode-content" class="hidden">
-                            <p class="qr-title">掃描下載專屬漫畫！</p>
-                            <div id="qrcode"></div>
-                            <a id="downloadLink" href="#" target="_blank">點此開啟雲端原圖</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="footer-actions">
-            <button id="homeBtn" class="hidden">回到主頁</button>
         </div>
     </div>
-    <script type="module" src="/app_web.js"></script>
+    <script type="module">
+        const webcam = document.getElementById('webcam');
+        const snapshotCanvas = document.getElementById('snapshot');
+        const openCameraBtn = document.getElementById('openCameraBtn');
+        const takePhotoBtn = document.getElementById('takePhotoBtn');
+        const countdownDisplay = document.getElementById('countdown');
+
+        openCameraBtn.onclick = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                webcam.srcObject = stream;
+                openCameraBtn.classList.add('hidden');
+                takePhotoBtn.classList.remove('hidden');
+            } catch (err) { alert("無法開啟相機。"); }
+        };
+
+        takePhotoBtn.onclick = () => {
+            let count = 3;
+            takePhotoBtn.disabled = true;
+            countdownDisplay.style.display = 'block';
+            countdownDisplay.innerText = count;
+            countdownDisplay.classList.add('animate');
+
+            const timer = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownDisplay.innerText = count;
+                    countdownDisplay.classList.remove('animate');
+                    void countdownDisplay.offsetWidth; 
+                    countdownDisplay.classList.add('animate');
+                } else {
+                    clearInterval(timer);
+                    captureAndGo();
+                }
+            }, 1000);
+        };
+
+        function captureAndGo() {
+    const context = snapshotCanvas.getContext('2d');
+    const targetWidth = 600;
+    const targetHeight = 800;
+    snapshotCanvas.width = targetWidth;
+    snapshotCanvas.height = targetHeight;
+
+    context.save();
+    // 處理前鏡頭鏡像翻轉
+    context.translate(targetWidth, 0);
+    context.scale(-1, 1);
+
+    // 🌟 關鍵修正：計算真實鏡頭比例與目標比例，進行「置中裁切」而非「壓縮」
+    const videoRatio = webcam.videoWidth / webcam.videoHeight;
+    const targetRatio = targetWidth / targetHeight;
+    let sw, sh, sx, sy;
+
+    if (videoRatio > targetRatio) {
+        // 鏡頭畫面太寬：裁切左右
+        sh = webcam.videoHeight;
+        sw = sh * targetRatio;
+        sx = (webcam.videoWidth - sw) / 2;
+        sy = 0;
+    } else {
+        // 鏡頭畫面太高：裁切上下
+        sw = webcam.videoWidth;
+        sh = sw / targetRatio;
+        sx = 0;
+        sy = (webcam.videoHeight - sh) / 2;
+    }
+
+    // 將裁切好的正確比例畫布輸出，這樣就不會變形了
+    context.drawImage(webcam, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
+    context.restore();
+
+    // 將正確比例的照片存入 session 並跳轉
+    const dataUrl = snapshotCanvas.toDataURL('image/jpeg');
+    sessionStorage.setItem('capturedPhoto', dataUrl);
+    window.location.href = 'process.html';
+}
+    </script>
 </body>
 </html>

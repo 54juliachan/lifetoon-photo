@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lifetoon | 3. 完成結果</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>您的專屬漫畫</h1>
+            <p>處理完成！請掃描右側 QR Code 儲存圖片。</p>
+        </header>
+
+        <div id="final-layout">
+            <div id="image-placeholder">
+                <img id="resultImg" src="">
+            </div>
+            
+            <div id="qr-placeholder">
+                <div id="qrcode-content">
+                    <p class="qr-title">掃描下載</p>
+                    <div id="qrcode"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-actions">
+            <button id="homeBtn" onclick="window.location.href='index.html'">回首頁重新拍攝</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import QRCode from 'qrcode';
+        const resultImg = document.getElementById('resultImg');
+        const qrcodeElement = document.getElementById('qrcode');
+
+        // 從 Session 取出資料
+        const finalPngData = sessionStorage.getItem('finalPngData');
+        const downloadUrl = sessionStorage.getItem('finalResultUrl');
+
+        if (finalPngData && downloadUrl) {
+            resultImg.src = finalPngData;
+            // 產生 QR Code
+            QRCode.toCanvas(document.createElement('canvas'), downloadUrl, { width: 200 }, (err, canvas) => {
+                qrcodeElement.appendChild(canvas);
+            });
+        } else {
+            window.location.href = 'index.html'; // 防呆
+        }
+    </script>
+</body>
+</html>

@@ -1,7 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { removeBackground } from "@imgly/background-removal";
-import QRCode from 'qrcode';
-
 import templateSrc from './template.png';
 import decoSrc from './decoration.png';
 
@@ -12,129 +10,25 @@ const TEMPLATE_URL = templateSrc;
 const DECO_URL = decoSrc;
 
 // --- DOM 元素 ---
-const webcam = document.getElementById('webcam');
-const snapshotCanvas = document.getElementById('snapshot');
-const openCameraBtn = document.getElementById('openCameraBtn');
-const takePhotoBtn = document.getElementById('takePhotoBtn');
-const generateBtn = document.getElementById('generateBtn');
-const homeBtn = document.getElementById('homeBtn'); 
-const cameraContainer = document.getElementById('camera-container');
-const countdownDisplay = document.getElementById('countdown');
 const previewImg = document.getElementById('previewImg');
-const resultImg = document.getElementById('resultImg');
+const generateBtn = document.getElementById('generateBtn');
+const reTakeBtn = document.getElementById('reTakeBtn');
+const statusText = document.getElementById('statusText');
 const loading = document.getElementById('loading');
-const resultArea = document.getElementById('resultArea');
 const previewBox = document.getElementById('previewBox');
-const resultBox = document.getElementById('resultBox');
 
-// 佔位框與內容元素
-const imagePlaceholder = document.getElementById('image-placeholder');
-const imageLoadingText = document.getElementById('image-loading-text');
-const qrPlaceholder = document.getElementById('qr-placeholder');
-const qrLoadingText = document.getElementById('qr-loading-text');
-const qrcodeContent = document.getElementById('qrcode-content');
-const qrcodeElement = document.getElementById('qrcode');
-const downloadLink = document.getElementById('downloadLink');
+// 1. 頁面載入時，立即從 Session 讀取照片
+const capturedPhotoDataUrl = sessionStorage.getItem('capturedPhoto');
 
-let capturedFile = null;
-
-// 1. 開啟相機
-openCameraBtn.onclick = async () => {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        webcam.srcObject = stream;
-        cameraContainer.style.display = 'block';
-        openCameraBtn.classList.add('hidden');
-        takePhotoBtn.classList.remove('hidden');
-    } catch (err) {
-        alert("無法開啟相機，請檢查權限。");
-    }
-};
-
-// 2. 拍照倒數
-takePhotoBtn.onclick = () => {
-    let count = 3;
-    takePhotoBtn.disabled = true;
-    countdownDisplay.style.display = 'block';
-    countdownDisplay.innerText = count;
-    countdownDisplay.classList.add('animate');
-
-    const timer = setInterval(() => {
-        count--;
-        if (count > 0) {
-            countdownDisplay.innerText = count;
-            countdownDisplay.classList.remove('animate');
-            void countdownDisplay.offsetWidth; 
-            countdownDisplay.classList.add('animate');
-        } else {
-            clearInterval(timer);
-            countdownDisplay.style.display = 'none';
-            captureImage();
-            takePhotoBtn.disabled = false;
-        }
-    }, 1000);
-};
-
-function captureImage() {
-    const context = snapshotCanvas.getContext('2d');
-    const targetWidth = 600;
-    const targetHeight = 800;
-    snapshotCanvas.width = targetWidth;
-    snapshotCanvas.height = targetHeight;
-
-    context.save();
-    context.translate(targetWidth, 0);
-    context.scale(-1, 1);
-
-    const videoRatio = webcam.videoWidth / webcam.videoHeight;
-    const targetRatio = targetWidth / targetHeight;
-    let sw, sh, sx, sy;
-
-    if (videoRatio > targetRatio) {
-        sh = webcam.videoHeight;
-        sw = sh * targetRatio;
-        sx = (webcam.videoWidth - sw) / 2;
-        sy = 0;
-    } else {
-        sw = webcam.videoWidth;
-        sh = sw / targetRatio;
-        sx = 0;
-        sy = (webcam.videoHeight - sh) / 2;
-    }
-
-    context.drawImage(webcam, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
-    context.restore();
-
-    snapshotCanvas.toBlob((blob) => {
-        capturedFile = new File([blob], "selfie.jpg", { type: "image/jpeg" });
-        
-        resultArea.classList.remove('hidden');
-        previewBox.classList.remove('hidden'); 
-        resultBox.classList.add('hidden'); 
-        previewImg.src = URL.createObjectURL(capturedFile);
-        previewImg.classList.remove('hidden');
-        generateBtn.classList.remove('hidden');
-        
-        const stream = webcam.srcObject;
-        if (stream) stream.getTracks().forEach(track => track.stop());
-        cameraContainer.style.display = 'none';
-        takePhotoBtn.classList.add('hidden');
-        openCameraBtn.classList.remove('hidden');
-        openCameraBtn.innerText = "重新拍攝";
-    }, 'image/jpeg');
+if (!capturedPhotoDataUrl) {
+    alert("找不到拍攝的照片，請重新拍攝！");
+    window.location.href = 'index.html';
+} else {
+    // 成功讀取，顯示在預覽框中
+    previewImg.src = capturedPhotoDataUrl;
 }
 
-// 3. 輔助函式：檔案轉 Base64
-async function fileToGenerativePart(file) {
-    const base64EncodedDataPromise = new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result.split(',')[1]);
-        reader.readAsDataURL(file);
-    });
-    return { inlineData: { data: await base64EncodedDataPromise, mimeType: file.type } };
-}
-
-// 4. 純前端自動裁切綠幕
+// 2. 輔助函式：純前端自動裁切綠幕
 async function autoCropGreenScreen(base64Data, mimeType) {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -193,7 +87,7 @@ async function autoCropGreenScreen(base64Data, mimeType) {
     });
 }
 
-// 5. 圖片合成邏輯
+// 3. 輔助函式：圖片合成邏輯
 async function combineImages(portraitUrl, templateUrl, decoUrl) {
     return new Promise((resolve, reject) => {
         const canvas = document.createElement('canvas');
@@ -238,33 +132,27 @@ async function combineImages(portraitUrl, templateUrl, decoUrl) {
     });
 }
 
-// 6. 一鍵全自動處理邏輯
+// 4. 開始轉換邏輯
 generateBtn.onclick = async () => {
-    if (!capturedFile) return alert("請先拍攝照片！");
-    
-    // 初始化 UI，進入處理狀態
-    generateBtn.classList.add('hidden'); 
-    openCameraBtn.classList.add('hidden'); 
-    previewBox.classList.add('hidden');    
-    
-    resultBox.classList.remove('hidden');
+    // 進入載入狀態
+    generateBtn.classList.add('hidden');
+    reTakeBtn.classList.add('hidden');
+    previewBox.classList.add('hidden');
     loading.classList.remove('hidden');
-    homeBtn.classList.add('hidden');
     
-    // 重置左右佔位框的狀態 (顯示等待文字，隱藏內容)
-    resultImg.classList.add('hidden');
-    imageLoadingText.classList.remove('hidden');
-    imagePlaceholder.style.backgroundColor = '#e0e0e0'; // 確保背景為灰色
-    
-    qrcodeContent.classList.add('hidden');
-    qrLoadingText.classList.remove('hidden');
-    qrPlaceholder.style.backgroundColor = '#e0e0e0'; 
-
     try {
         // --- 階段 1：AI 漫畫生成 ---
-        loading.innerText = "🎨 AI 漫畫家作畫中 (約需 10-15 秒)...";
+        statusText.innerText = "🎨 AI 漫畫家作畫中 (約需 10-15 秒)...";
         const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
-        const imagePart = await fileToGenerativePart(capturedFile);
+        
+        // 將 DataURL 轉換為 Gemini 需要的格式
+        const base64Data = capturedPhotoDataUrl.split(',')[1];
+        const imagePart = {
+            inlineData: {
+                data: base64Data,
+                mimeType: "image/jpeg"
+            }
+        };
         
         const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a portrait from the hips up, holding a sheet of paper in their hands, with a surprised and delighted facial expression. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, shading represented using manga-style screentone dots. The image should be in a vertical 3:5 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";         
         
@@ -283,7 +171,7 @@ generateBtn.onclick = async () => {
         }
 
         // --- 階段 2：智慧去背與圖層合成 ---
-        loading.innerText = "✨ 正在自動去背與合成拍貼排版...";
+        statusText.innerText = "✨ 正在自動去背與合成拍貼排版...";
         const config = {
             model: "large", 
             output: { format: "image/png", quality: 1.0 }
@@ -291,18 +179,12 @@ generateBtn.onclick = async () => {
         const blob = await removeBackground(currentImgDataUrl, config);
         const portraitUrl = URL.createObjectURL(blob);
         const finalPngUrl = await combineImages(portraitUrl, TEMPLATE_URL, DECO_URL);
-        
-        // 圖片處理完成：更新左側區塊
-        resultImg.src = finalPngUrl;
-        imageLoadingText.classList.add('hidden'); // 隱藏等待文字
-        resultImg.classList.remove('hidden');     // 顯示圖片
-        imagePlaceholder.style.backgroundColor = 'transparent'; // 去除佔位灰底
 
-        // --- 階段 3：ImgBB 上傳與產生 QR Code ---
-        loading.innerText = "☁️ 正在上傳雲端並產生下載連結...";
-        const base64Image = finalPngUrl.split(',')[1];
+        // --- 階段 3：ImgBB 上傳 ---
+        statusText.innerText = "☁️ 正在上傳雲端並產生下載連結...";
+        const finalBase64Image = finalPngUrl.split(',')[1];
         const formData = new FormData();
-        formData.append("image", base64Image);
+        formData.append("image", finalBase64Image);
         formData.append("expiration", 600); 
 
         const uploadResponse = await fetch(`https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`, {
@@ -315,24 +197,11 @@ generateBtn.onclick = async () => {
         if (uploadData.success) {
             const downloadUrl = uploadData.data.url;
 
-            // 產生 QR Code
-            qrcodeElement.innerHTML = ''; 
-            const canvas = document.createElement('canvas');
-            await QRCode.toCanvas(canvas, downloadUrl, {
-                width: 200,
-                margin: 2
-            });
-            qrcodeElement.appendChild(canvas);
-
-            // 上傳完成：更新右側區塊
-            qrLoadingText.classList.add('hidden'); // 隱藏等待文字
-            qrcodeContent.classList.remove('hidden'); // 顯示 QR Code 內容
-            qrPlaceholder.style.backgroundColor = '#f9f9f9'; // 背景換成較亮的底色
-
-            loading.innerText = "🎉 處理完成！請掃描右側 QR Code 儲存圖片。";
+            // 儲存結果並跳轉到結果頁
+            sessionStorage.setItem('finalPngData', finalPngUrl);
+            sessionStorage.setItem('finalResultUrl', downloadUrl);
             
-            // 流程結束，顯示置底的回到主頁按鈕
-            homeBtn.classList.remove('hidden'); 
+            window.location.href = 'result.html';
             
         } else {
             throw new Error("上傳到 ImgBB 失敗");
@@ -340,17 +209,12 @@ generateBtn.onclick = async () => {
 
     } catch (error) {
         console.error("處理過程中發生錯誤:", error);
-        loading.innerText = "❌ 處理失敗，請重試或確認網路連線。";
-        alert("處理過程中發生錯誤，請查看主控台。");
+        statusText.innerText = "❌ 處理失敗，請重試或確認網路連線。";
         
         // 失敗復原
-        generateBtn.classList.remove('hidden'); 
-        openCameraBtn.classList.remove('hidden'); 
+        generateBtn.classList.remove('hidden');
+        reTakeBtn.classList.remove('hidden');
         previewBox.classList.remove('hidden');
+        loading.classList.add('hidden');
     }
-};
-
-// 7. 回到主頁邏輯
-homeBtn.onclick = () => {
-    window.location.reload();
 };
