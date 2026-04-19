@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Lifetoon Photobooth - AI Manga Portrait Generator",
   "type": "module",
-  "main": "app_web.js",
+  "main": "index.html",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
