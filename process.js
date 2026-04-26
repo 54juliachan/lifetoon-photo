@@ -173,8 +173,8 @@ generateBtn.onclick = async () => {
         // --- 階段 2：智慧去背與圖層合成 ---
         statusText.innerText = "✨ 正在自動去背與合成拍貼排版...";
         const config = {
-            model: "large", 
-            output: { format: "image/png", quality: 1.0 }
+            model: "small", // 🌟 改用小型模型，大幅降低記憶體瞬間負載
+            output: { format: "image/png", quality: 0.8 } // 將品質微調至 0.8，可進一步省下合成時的運算空間，且肉眼幾乎看不出差異
         };
         const blob = await removeBackground(currentImgDataUrl, config);
         const portraitUrl = URL.createObjectURL(blob);
