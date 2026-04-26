@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { removeBackground } from "@imgly/background-removal";
+// ❌ 已經刪除 @imgly/background-removal 引入，不再使用耗資源的 AI 去背
 import templateSrc from './template.png';
 import decoSrc from './decoration.png';
 
@@ -28,8 +28,8 @@ if (!capturedPhotoDataUrl) {
     previewImg.src = capturedPhotoDataUrl;
 }
 
-// 2. 輔助函式：純前端自動裁切綠幕
-async function autoCropGreenScreen(base64Data, mimeType) {
+// 2. 終極優化：純 Canvas 綠幕去背與自動裁切 (記憶體消耗極低，速度極快)
+async function chromaKeyAndCrop(base64Data, mimeType) {
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.src = `data:${mimeType};base64,${base64Data}`;
@@ -40,19 +40,27 @@ async function autoCropGreenScreen(base64Data, mimeType) {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0);
 
+            // 取得所有像素資料
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const data = imageData.data;
             let minX = canvas.width, minY = canvas.height, VX = 0, VY = 0;
 
+            // 掃描每一個像素 (R, G, B, Alpha)
             for (let y = 0; y < canvas.height; y++) {
                 for (let x = 0; x < canvas.width; x++) {
                     const i = (y * canvas.width + x) * 4;
                     const r = data[i];
                     const g = data[i + 1];
                     const b = data[i + 2];
-                    const isGreen = (g > 200 && r < 100 && b < 100);
 
-                    if (!isGreen) {
+                    // 判斷是否為綠幕：螢光綠的 G 值很高，R 和 B 偏低
+                    const isGreen = (g > 150 && r < 120 && b < 120);
+
+                    if (isGreen) {
+                        // 🌟 關鍵：如果是綠幕，就把透明度 (Alpha) 設為 0，瞬間去背！
+                        data[i + 3] = 0; 
+                    } else {
+                        // 如果不是綠幕 (是人物主體)，記錄邊界以便後續裁切
                         if (x < minX) minX = x;
                         if (x > VX) VX = x;
                         if (y < minY) minY = y;
@@ -61,11 +69,16 @@ async function autoCropGreenScreen(base64Data, mimeType) {
                 }
             }
 
+            // 將去背後的透明像素放回畫布
+            ctx.putImageData(imageData, 0, 0);
+
+            // 如果整張圖都是綠色 (防呆機制)
             if (minX > VX) {
-                resolve(img.src);
+                resolve(canvas.toDataURL('image/png')); 
                 return;
             }
 
+            // 計算裁切範圍，保留一點邊距(padding)
             const padding = 20;
             minX = Math.max(0, minX - padding);
             minY = Math.max(0, minY - padding);
@@ -75,12 +88,16 @@ async function autoCropGreenScreen(base64Data, mimeType) {
             const cropWidth = VX - minX;
             const cropHeight = VY - minY;
 
+            // 建立一個新的畫布來存放裁切後的結果
             const cropCanvas = document.createElement('canvas');
             cropCanvas.width = cropWidth;
             cropCanvas.height = cropHeight;
             const cropCtx = cropCanvas.getContext('2d');
 
+            // 將去背完成的區塊畫到新畫布上
             cropCtx.drawImage(canvas, minX, minY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+            
+            // 輸出帶有透明背景的 PNG
             resolve(cropCanvas.toDataURL('image/png'));
         };
         img.onerror = (e) => reject(e);
@@ -162,23 +179,20 @@ generateBtn.onclick = async () => {
 
         if (!part.inlineData) throw new Error("AI 生成失敗，未回傳有效圖片");
 
-        let currentImgDataUrl;
+        // --- 階段 2：綠幕秒殺去背與圖層合成 (完全棄用 @imgly) ---
+        statusText.innerText = "✨ 正在進行綠幕去背與排版合成...";
+        
+        let finalPortraitDataUrl;
         try {
-            currentImgDataUrl = await autoCropGreenScreen(part.inlineData.data, part.inlineData.mimeType);
+            // 一次完成去背與裁切！
+            finalPortraitDataUrl = await chromaKeyAndCrop(part.inlineData.data, part.inlineData.mimeType);
         } catch (cropErr) {
-            console.warn("裁切失敗，使用原圖", cropErr);
-            currentImgDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+            console.warn("綠幕處理失敗，使用原圖", cropErr);
+            finalPortraitDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
         }
 
-        // --- 階段 2：智慧去背與圖層合成 ---
-        statusText.innerText = "✨ 正在自動去背與合成拍貼排版...";
-        const config = {
-            model: "small", // 🌟 改用小型模型，大幅降低記憶體瞬間負載
-            output: { format: "image/png", quality: 0.8 } // 將品質微調至 0.8，可進一步省下合成時的運算空間，且肉眼幾乎看不出差異
-        };
-        const blob = await removeBackground(currentImgDataUrl, config);
-        const portraitUrl = URL.createObjectURL(blob);
-        const finalPngUrl = await combineImages(portraitUrl, TEMPLATE_URL, DECO_URL);
+        // 直接將去背好的圖丟去合成底圖和外框
+        const finalPngUrl = await combineImages(finalPortraitDataUrl, TEMPLATE_URL, DECO_URL);
 
         // --- 階段 3：ImgBB 上傳 ---
         statusText.innerText = "☁️ 正在上傳雲端並產生下載連結...";
@@ -197,7 +211,7 @@ generateBtn.onclick = async () => {
         if (uploadData.success) {
             const downloadUrl = uploadData.data.url;
 
-            // 儲存結果並跳轉到結果頁
+            // ✅ 儲存結果雲端網址並跳轉到結果頁 (不存大檔案 Base64)
             sessionStorage.setItem('finalResultUrl', downloadUrl);
             
             window.location.href = 'result.html';
