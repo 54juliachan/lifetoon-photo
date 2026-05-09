@@ -27,6 +27,26 @@
             <button id="reTakeBtn" onclick="window.location.href='index.html'">重新拍攝</button>
             <button id="generateBtn">開始轉換</button>
         </div>
+
+        <div id="eggModal" class="hidden interactive-modal">
+            <div id="eggIntro">
+                <h2 class="manga-title">您拾獲了一顆神祕的蛋</h2>
+                <p>輕撫注入故事以孵化</p>
+                <button id="startHatchBtn" style="margin-top:25px;">開始孵化</button>
+            </div>
+            
+            <div id="eggInteraction" class="hidden">
+                <h3 id="eggStatusText">輕撫蛋來注入能量...</h3>
+                <div class="progress-container">
+                    <div id="eggProgress"></div>
+                </div>
+                
+                <div id="eggContainer">
+                    <div id="theEgg"></div>
+                    <div id="eggGlow"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="./process.js"></script>

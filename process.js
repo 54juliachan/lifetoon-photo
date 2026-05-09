@@ -1,5 +1,4 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-// ❌ 已經刪除 @imgly/background-removal 引入，不再使用耗資源的 AI 去背
 import templateSrc from './template.png';
 import decoSrc from './decoration.png';
 
@@ -17,6 +16,21 @@ const statusText = document.getElementById('statusText');
 const loading = document.getElementById('loading');
 const previewBox = document.getElementById('previewBox');
 
+const eggModal = document.getElementById('eggModal');
+const eggIntro = document.getElementById('eggIntro');
+const eggInteraction = document.getElementById('eggInteraction');
+const startHatchBtn = document.getElementById('startHatchBtn');
+const theEgg = document.getElementById('theEgg');
+const eggProgress = document.getElementById('eggProgress');
+const eggStatusText = document.getElementById('eggStatusText');
+const eggGlow = document.getElementById('eggGlow');
+
+// --- 狀態變數 ---
+let petProgress = 0;
+let isAiDone = false;
+let isHatching = false; // 防止重複觸發跳轉
+let finalDownloadUrl = null;
+
 // 1. 頁面載入時，立即從 Session 讀取照片
 const capturedPhotoDataUrl = sessionStorage.getItem('capturedPhoto');
 
@@ -24,11 +38,10 @@ if (!capturedPhotoDataUrl) {
     alert("找不到拍攝的照片，請重新拍攝！");
     window.location.href = 'index.html';
 } else {
-    // 成功讀取，顯示在預覽框中
     previewImg.src = capturedPhotoDataUrl;
 }
 
-// 2. 終極優化：純 Canvas 綠幕去背與自動裁切 (記憶體消耗極低，速度極快)
+// 2. 純 Canvas 綠幕去背與自動裁切
 async function chromaKeyAndCrop(base64Data, mimeType) {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -40,12 +53,10 @@ async function chromaKeyAndCrop(base64Data, mimeType) {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0);
 
-            // 取得所有像素資料
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const data = imageData.data;
             let minX = canvas.width, minY = canvas.height, VX = 0, VY = 0;
 
-            // 掃描每一個像素 (R, G, B, Alpha)
             for (let y = 0; y < canvas.height; y++) {
                 for (let x = 0; x < canvas.width; x++) {
                     const i = (y * canvas.width + x) * 4;
@@ -53,14 +64,11 @@ async function chromaKeyAndCrop(base64Data, mimeType) {
                     const g = data[i + 1];
                     const b = data[i + 2];
 
-                    // 判斷是否為綠幕：螢光綠的 G 值很高，R 和 B 偏低
                     const isGreen = (g > 150 && r < 120 && b < 120);
 
                     if (isGreen) {
-                        // 🌟 關鍵：如果是綠幕，就把透明度 (Alpha) 設為 0，瞬間去背！
                         data[i + 3] = 0; 
                     } else {
-                        // 如果不是綠幕 (是人物主體)，記錄邊界以便後續裁切
                         if (x < minX) minX = x;
                         if (x > VX) VX = x;
                         if (y < minY) minY = y;
@@ -69,16 +77,13 @@ async function chromaKeyAndCrop(base64Data, mimeType) {
                 }
             }
 
-            // 將去背後的透明像素放回畫布
             ctx.putImageData(imageData, 0, 0);
 
-            // 如果整張圖都是綠色 (防呆機制)
             if (minX > VX) {
                 resolve(canvas.toDataURL('image/png')); 
                 return;
             }
 
-            // 計算裁切範圍，保留一點邊距(padding)
             const padding = 20;
             minX = Math.max(0, minX - padding);
             minY = Math.max(0, minY - padding);
@@ -88,23 +93,19 @@ async function chromaKeyAndCrop(base64Data, mimeType) {
             const cropWidth = VX - minX;
             const cropHeight = VY - minY;
 
-            // 建立一個新的畫布來存放裁切後的結果
             const cropCanvas = document.createElement('canvas');
             cropCanvas.width = cropWidth;
             cropCanvas.height = cropHeight;
             const cropCtx = cropCanvas.getContext('2d');
 
-            // 將去背完成的區塊畫到新畫布上
             cropCtx.drawImage(canvas, minX, minY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-            
-            // 輸出帶有透明背景的 PNG
             resolve(cropCanvas.toDataURL('image/png'));
         };
         img.onerror = (e) => reject(e);
     });
 }
 
-// 3. 輔助函式：圖片合成邏輯
+// 3. 圖片合成邏輯
 async function combineImages(portraitUrl, templateUrl, decoUrl) {
     return new Promise((resolve, reject) => {
         const canvas = document.createElement('canvas');
@@ -149,85 +150,171 @@ async function combineImages(portraitUrl, templateUrl, decoUrl) {
     });
 }
 
-// 4. 開始轉換邏輯
-generateBtn.onclick = async () => {
-    // 進入載入狀態
+// --- 4. 互動與轉換邏輯 ---
+generateBtn.onclick = () => {
     generateBtn.classList.add('hidden');
     reTakeBtn.classList.add('hidden');
     previewBox.classList.add('hidden');
-    loading.classList.remove('hidden');
+    statusText.parentElement.classList.add('hidden'); 
     
-    try {
-        // --- 階段 1：AI 漫畫生成 ---
-        statusText.innerText = "🎨 AI 漫畫家作畫中 (約需 10-15 秒)...";
-        const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
-        
-        // 將 DataURL 轉換為 Gemini 需要的格式
-        const base64Data = capturedPhotoDataUrl.split(',')[1];
-        const imagePart = {
-            inlineData: {
-                data: base64Data,
-                mimeType: "image/jpeg"
+    eggModal.classList.remove('hidden');
+};
+
+startHatchBtn.onclick = () => {
+    eggIntro.classList.add('hidden');
+    eggInteraction.classList.remove('hidden');
+    
+    processAI();
+    setupEggInteraction();
+};
+
+function setupEggInteraction() {
+    let lastX = null, lastY = null;
+    
+    const handleTouchMove = (e) => {
+        e.preventDefault(); 
+        let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        if (lastX !== null && lastY !== null) {
+            let dist = Math.sqrt(Math.pow(clientX - lastX, 2) + Math.pow(clientY - lastY, 2));
+            // 每次滑動距離超過 15px 才算作一次有效撫摸
+            if (dist > 15) { 
+                // 100 / 30 = 3.34，確保玩家必須紮實滑動約 30 次才會滿 100%
+                addProgress(3.34); 
+                lastX = clientX;
+                lastY = clientY;
             }
-        };
-        
-        const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a portrait from the hips up, holding a sheet of paper in their hands, with a surprised and delighted facial expression. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, shading represented using manga-style screentone dots. The image should be in a vertical 3:5 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";         
+        } else {
+            lastX = clientX;
+            lastY = clientY;
+        }
+        theEgg.classList.add('touching');
+    };
+
+    const endTouch = () => {
+        lastX = null; lastY = null;
+        theEgg.classList.remove('touching');
+    };
+
+    theEgg.addEventListener('mousemove', handleTouchMove);
+    theEgg.addEventListener('touchmove', handleTouchMove, {passive: false});
+    theEgg.addEventListener('mouseleave', endTouch);
+    theEgg.addEventListener('touchend', endTouch);
+    theEgg.addEventListener('mouseup', endTouch);
+}
+
+function addProgress(amount) {
+    if (petProgress >= 100) return;
+    
+    petProgress += amount;
+    
+    // 規則 2：如果撫摸超過 30 下但 AI 還沒好，嚴格卡在 99%
+    if (petProgress >= 99 && !isAiDone) {
+        petProgress = 99; 
+        eggStatusText.innerText = "✨ 差一點點了，再加油一下！";
+        theEgg.classList.add('egg-shaking-fast');
+    } else if (petProgress >= 100) {
+        petProgress = 100;
+    }
+    
+    updateEggVisuals();
+
+    // 規則 1：必須滿 100% (代表摸滿 30 下) 且 AI 完成才能跳轉
+    if (petProgress >= 100 && isAiDone) {
+        hatchAndRedirect();
+    }
+}
+
+function updateEggVisuals() {
+    eggProgress.style.width = `${petProgress}%`;
+    
+    if (petProgress > 30 && petProgress <= 60) {
+        theEgg.classList.add('egg-shaking');
+        theEgg.classList.add('cracked-1');
+    }
+    if (petProgress > 60 && petProgress < 100) {
+        theEgg.classList.add('cracked-2');
+        // 確保不會覆蓋掉 99% 的提示文字
+        if(!isAiDone && petProgress < 99) {
+            eggStatusText.innerText = "🥚 蛋殼出現裂痕了，繼續輕撫！";
+        }
+    }
+}
+
+function hatchAndRedirect() {
+    if (isHatching) return; // 防止重複觸發
+    isHatching = true;
+
+    eggStatusText.innerText = "🌟 孵化完成！";
+    theEgg.classList.add('egg-shaking-fast');
+    eggGlow.classList.add('flash'); 
+    
+    setTimeout(() => {
+        sessionStorage.setItem('finalResultUrl', finalDownloadUrl);
+        window.location.href = 'result.html';
+    }, 900); 
+}
+
+// AI 處理核心
+async function processAI() {
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
+        const base64Data = capturedPhotoDataUrl.split(',')[1];
+        const imagePart = { inlineData: { data: base64Data, mimeType: "image/jpeg" } };
+        const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a portrait from the hips up, a slightly parted mouth, gently widened eyes, and raised eyebrows, expressing mild surprise. Two hands are gently raised to her chest with fingers loosely open. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, shading represented using manga-style screentone dots. The image should be in a vertical 3:5 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";         
         
         const result = await model.generateContent([prompt, imagePart]);
         const response = await result.response;
         const part = response.candidates[0].content.parts[0];
 
-        if (!part.inlineData) throw new Error("AI 生成失敗，未回傳有效圖片");
+        if (!part.inlineData) throw new Error("AI 生成失敗");
 
-        // --- 階段 2：綠幕秒殺去背與圖層合成 (完全棄用 @imgly) ---
-        statusText.innerText = "✨ 正在進行綠幕去背與排版合成...";
-        
         let finalPortraitDataUrl;
         try {
-            // 一次完成去背與裁切！
             finalPortraitDataUrl = await chromaKeyAndCrop(part.inlineData.data, part.inlineData.mimeType);
         } catch (cropErr) {
-            console.warn("綠幕處理失敗，使用原圖", cropErr);
             finalPortraitDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
         }
 
-        // 直接將去背好的圖丟去合成底圖和外框
         const finalPngUrl = await combineImages(finalPortraitDataUrl, TEMPLATE_URL, DECO_URL);
 
-        // --- 階段 3：ImgBB 上傳 ---
-        statusText.innerText = "☁️ 正在上傳雲端並產生下載連結...";
-        const finalBase64Image = finalPngUrl.split(',')[1];
         const formData = new FormData();
-        formData.append("image", finalBase64Image);
+        formData.append("image", finalPngUrl.split(',')[1]);
         formData.append("expiration", 600); 
 
         const uploadResponse = await fetch(`https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`, {
-            method: "POST",
-            body: formData
+            method: "POST", body: formData
         });
-
         const uploadData = await uploadResponse.json();
 
         if (uploadData.success) {
-            const downloadUrl = uploadData.data.url;
-
-            // ✅ 儲存結果雲端網址並跳轉到結果頁 (不存大檔案 Base64)
-            sessionStorage.setItem('finalResultUrl', downloadUrl);
+            finalDownloadUrl = uploadData.data.url;
+            isAiDone = true; 
             
-            window.location.href = 'result.html';
-            
+            // 情況 A：AI 提早完成，但玩家還沒摸滿 30 下 (< 99%)
+            // -> 什麼都不做，不自動補滿，讓玩家繼續摸完剩下的進度。
+            if (petProgress < 99) {
+                // 如果需要可以開啟這行提示玩家
+                // eggStatusText.innerText = "⚡ 故事能量已備妥，請繼續完成孵化！";
+            } 
+            // 情況 B：玩家早就摸滿 30 下卡在 99% 乾等 AI
+            // -> AI 一完成，立即突破 100% 並觸發破殼跳轉
+            else {
+                petProgress = 100;
+                updateEggVisuals();
+                hatchAndRedirect();
+            }
         } else {
             throw new Error("上傳到 ImgBB 失敗");
         }
-
     } catch (error) {
         console.error("處理過程中發生錯誤:", error);
+        eggModal.classList.add('hidden');
+        statusText.parentElement.classList.remove('hidden');
         statusText.innerText = "❌ 處理失敗，請重試或確認網路連線。";
-        
-        // 失敗復原
         generateBtn.classList.remove('hidden');
         reTakeBtn.classList.remove('hidden');
         previewBox.classList.remove('hidden');
-        loading.classList.add('hidden');
     }
-};
+}

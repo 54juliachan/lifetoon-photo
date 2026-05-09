@@ -304,3 +304,117 @@ button:disabled {
 .hidden {
     display: none !important;
 }
+
+/* =========================================
+   孵蛋互動模組特效
+   ========================================= */
+
+.interactive-modal {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(250, 250, 250, 0.95);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.manga-title {
+    font-size: 2.2rem;
+    font-weight: 900;
+    background: var(--manga-black);
+    color: var(--manga-white);
+    padding: 10px 20px;
+    transform: rotate(-2deg);
+    margin-bottom: 10px;
+    box-shadow: 6px 6px 0px 0px var(--manga-yellow);
+}
+
+.progress-container {
+    width: 250px;
+    height: 24px;
+    border: 4px solid var(--manga-black);
+    background: #FFF;
+    margin: 15px auto;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+#eggProgress {
+    width: 0%;
+    height: 100%;
+    background: var(--manga-yellow);
+    transition: width 0.1s linear;
+}
+
+#eggContainer {
+    position: relative;
+    margin-top: 30px;
+    padding: 20px;
+    touch-action: none; /* 防止手機/平板觸控時滑動畫面 */
+}
+
+/* 純 CSS 繪製蛋型 */
+#theEgg {
+    width: 160px;
+    height: 220px;
+    background-color: var(--manga-white);
+    border: 8px solid var(--manga-black);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    box-shadow: inset -15px -25px 0px rgba(0,0,0,0.05), 10px 10px 0px var(--manga-black);
+    transition: transform 0.1s ease-out;
+    cursor: pointer;
+}
+
+/* 撫摸時微縮放 */
+#theEgg.touching {
+    transform: scale(0.95);
+}
+
+/* 震動動畫 */
+@keyframes eggShake {
+    0% { transform: rotate(0deg); }
+    25% { transform: rotate(-3deg) translateX(-2px); }
+    50% { transform: rotate(0deg); }
+    75% { transform: rotate(3deg) translateX(2px); }
+    100% { transform: rotate(0deg); }
+}
+.egg-shaking { animation: eggShake 0.4s infinite; }
+.egg-shaking-fast { animation: eggShake 0.15s infinite; }
+
+/* 純 CSS 裂痕效果 (利用多重漸層背景) */
+#theEgg.cracked-1 {
+    background-image: linear-gradient(105deg, transparent 48%, var(--manga-black) 49%, var(--manga-black) 51%, transparent 52%);
+    background-size: 70px 70px;
+    background-repeat: no-repeat;
+    background-position: center top;
+}
+#theEgg.cracked-2 {
+    background-image: 
+        linear-gradient(105deg, transparent 48%, var(--manga-black) 49%, var(--manga-black) 51%, transparent 52%),
+        linear-gradient(-35deg, transparent 48%, var(--manga-black) 49%, var(--manga-black) 51%, transparent 52%);
+    background-size: 70px 70px, 80px 80px;
+    background-repeat: no-repeat;
+    background-position: center top, left bottom;
+}
+
+/* 強光特效 */
+#eggGlow {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px; height: 20px;
+    background: #FFF;
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 0 50px 50px #FFF;
+}
+#eggGlow.flash {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(200);
+    z-index: 200;
+}
