@@ -154,18 +154,18 @@ async function combineImages(portraitUrl, templateUrl, decoUrl, customText) { //
                     
                     // 🌟 新增：將體驗者輸入的文字繪製在最上層
                     if (customText) {
-                        ctx.font = "bold 60px 'Noto Sans TC', sans-serif"; // 設定字體與大小
-                        ctx.fillStyle = "#FFFFFF"; // 設定字體為白色
-                        ctx.textAlign = "center";  // 水平置中
+                        ctx.font = "bold 180px 'Noto Sans TC', sans-serif"; // 設定字體與大小
+                        ctx.fillStyle = "#000000"; // 設定字體為黑色
+                        ctx.textAlign = "left";  // 靠左對齊
                         ctx.textBaseline = "bottom"; // 垂直對齊底部
 
-                        // 加上黑色描邊，確保在任何背景上文字都很清楚
-                        ctx.lineWidth = 10;
-                        ctx.strokeStyle = "#000000";
+                        // 加上白色描邊，確保在任何背景上文字都很清楚
+                        ctx.lineWidth = 50;
+                        ctx.strokeStyle = "#FFFFFF";
 
                         // 計算文字位置：水平正中間，垂直貼近畫布底部往上 40px
                         const textX = canvas.width / 2;
-                        const textY = canvas.height - 40; 
+                        const textY = canvas.height - 80; 
 
                         // 先畫黑色描邊，再畫白色實體，才會有漫畫字幕感
                         ctx.strokeText(customText, textX, textY);
