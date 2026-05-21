@@ -254,7 +254,7 @@ function hatchAndRedirect() {
     isHatching = true;
 
     eggStatusText.innerText = "🌟 孵化完成！";
-    theEgg.classList.add('egg-shaking-fast');
+    theEgg.classList.add('hatching-shake');
     eggGlow.classList.add('flash'); 
     
     setTimeout(() => {

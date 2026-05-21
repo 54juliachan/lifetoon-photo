@@ -27,7 +27,7 @@
         </div>
 
         <div class="footer-actions">
-            <button id="homeBtn" onclick="window.location.href='index.html'">回首頁重新拍攝</button>
+            <button id="homeBtn" onclick="window.location.href='index.html'">回首頁(100s)</button>
         </div>
     </div>
 
@@ -35,6 +35,7 @@
         import QRCode from 'qrcode';
         const resultImg = document.getElementById('resultImg');
         const qrcodeElement = document.getElementById('qrcode');
+        const homeBtn = document.getElementById('homeBtn'); // 🌟 抓取按鈕元素
 
         // 從 Session 取出雲端網址
         const downloadUrl = sessionStorage.getItem('finalResultUrl');
@@ -51,6 +52,22 @@
             alert("找不到結果圖片，請重新拍攝");
             window.location.href = 'index.html'; // 防呆
         }
+
+        // 2. 🌟 新增：100秒自動倒數與跳轉邏輯
+        let countdownTime = 100; // 設定倒數秒數
+
+        const timer = setInterval(() => {
+            countdownTime--; // 每秒減 1
+            
+            if (countdownTime > 0) {
+                // 更新按鈕文字
+                homeBtn.innerText = `回首頁(${countdownTime}s)`;
+            } else {
+                // 時間到，清除計時器並跳轉回首頁
+                clearInterval(timer);
+                window.location.href = 'index.html';
+            }
+        }, 1000); // 1000 毫秒 = 1 秒
     </script>
 </body>
 </html>

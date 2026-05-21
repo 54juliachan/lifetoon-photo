@@ -381,8 +381,11 @@ button:disabled {
     75% { transform: rotate(3deg) translateX(2px); }
     100% { transform: rotate(0deg); }
 }
-.egg-shaking { animation: eggShake 0.4s infinite; }
-.egg-shaking-fast { animation: eggShake 0.15s infinite; }
+.touching.egg-shaking { animation: eggShake 0.4s infinite; }
+.touching.egg-shaking-fast { animation: eggShake 0.15s infinite; }
+
+/* 最後「孵化完成」跳轉前，可以脫離撫摸限制自動搖晃 */
+.hatching-shake { animation: eggShake 0.15s infinite; }
 
 /* 純 CSS 裂痕效果 (利用多重漸層背景) */
 #theEgg.cracked-1 {
