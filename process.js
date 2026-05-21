@@ -163,14 +163,37 @@ async function combineImages(portraitUrl, templateUrl, decoUrl, customText) { //
                         ctx.lineWidth = 5;
                         ctx.strokeStyle = "#FFFFFF";
 
-                        // 計算文字位置：水平正中間，垂直貼近畫布底部往上 10px
+                        // 計算文字位置：靠左 15px，垂直貼近畫布底部往上 10px
                         const textX = 15;
                         const textY = canvas.height - 10; 
 
-                        // 先畫黑色描邊，再畫白色實體，才會有漫畫字幕感
+                        // 先畫白色描邊，再畫黑色實體，才會有漫畫字幕感
                         ctx.strokeText(customText, textX, textY);
                         ctx.fillText(customText, textX, textY);
                     }
+                    
+                    // --- 🌟 新增：全圖黑白濾鏡處理 🌟 ---
+                    // 1. 取得畫布上包含底圖、人像、裝飾與文字的所有像素
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+
+                    // 2. 遍歷並將每個像素轉換為符合視覺亮度的灰階值
+                    for (let i = 0; i < data.length; i += 4) {
+                        const r = data[i];     
+                        const g = data[i + 1]; 
+                        const b = data[i + 2]; 
+
+                        // 亮度計算公式
+                        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                        data[i] = gray;     
+                        data[i + 1] = gray; 
+                        data[i + 2] = gray; 
+                    }
+
+                    // 3. 將全黑白的像素覆蓋回畫布
+                    ctx.putImageData(imageData, 0, 0);
+                    // ------------------------------------------------
                     
                     resolve(canvas.toDataURL('image/png'));
                 };
