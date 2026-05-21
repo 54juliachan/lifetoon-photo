@@ -141,7 +141,7 @@ async function combineImages(portraitUrl, templateUrl, decoUrl, customText) { //
                 
                 // 置中對齊
                 const x = (canvas.width - pWidth) / 2; 
-                const y = canvas.height - pHeight - 110; 
+                const y = canvas.height - pHeight - 10; 
 
                 ctx.drawImage(portraitImg, x, y, pWidth, pHeight);
 
@@ -160,12 +160,12 @@ async function combineImages(portraitUrl, templateUrl, decoUrl, customText) { //
                         ctx.textBaseline = "bottom"; // 垂直對齊底部
 
                         // 加上白色描邊，確保在任何背景上文字都很清楚
-                        ctx.lineWidth = 50;
+                        ctx.lineWidth = 5;
                         ctx.strokeStyle = "#FFFFFF";
 
                         // 計算文字位置：水平正中間，垂直貼近畫布底部往上 40px
-                        const textX = 50;
-                        const textY = canvas.height - 80; 
+                        const textX = 20;
+                        const textY = canvas.height - 40; 
 
                         // 先畫黑色描邊，再畫白色實體，才會有漫畫字幕感
                         ctx.strokeText(customText, textX, textY);
