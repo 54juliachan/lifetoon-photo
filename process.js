@@ -25,12 +25,16 @@ const eggProgress = document.getElementById('eggProgress');
 const eggStatusText = document.getElementById('eggStatusText');
 const eggGlow = document.getElementById('eggGlow');
 
+const textInputSection = document.getElementById('textInputSection');
+const roleInput = document.getElementById('roleInput');
+const startIsekaiBtn = document.getElementById('startIsekaiBtn');
 // --- 狀態變數 ---
-let currentStep = 0;       // 改為步數計算 (0 到 31)
-const MAX_STEPS = 31;      // 總共 31 段
+let currentStep = 0;       // 改為步數計算 (0 到 81)
+const MAX_STEPS = 81;      // 總共 81 段
 let isAiDone = false;
 let isHatching = false; 
 let finalDownloadUrl = null;
+let userRoleText = ""; // 儲存玩家輸入的文字
 
 // 1. 頁面載入時，立即從 Session 讀取照片
 const capturedPhotoDataUrl = sessionStorage.getItem('capturedPhoto');
@@ -107,7 +111,7 @@ async function chromaKeyAndCrop(base64Data, mimeType) {
 }
 
 // 3. 圖片合成邏輯
-async function combineImages(portraitUrl, templateUrl, decoUrl) {
+async function combineImages(portraitUrl, templateUrl, decoUrl, customText) { // 🌟 修正：新增了 customText 參數
     return new Promise((resolve, reject) => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -130,30 +134,43 @@ async function combineImages(portraitUrl, templateUrl, decoUrl) {
                 ctx.save(); 
                 ctx.filter = 'grayscale(100%) contrast(120%)';
                 
-                // 🌟 修正 1：調整人像高度比例為畫布的 90% (原本為 0.7)
+                // 調整人像高度比例為畫布的 90%
                 const scale = 0.9; 
                 const pHeight = canvas.height * scale;
                 const pWidth = (portraitImg.width / portraitImg.height) * pHeight;
                 
-                // 🌟 修正 2：將 x 座標改為畫布寬度減去圖片寬度除以 2，達到「左右置中」
+                // 置中對齊
                 const x = (canvas.width - pWidth) / 2; 
-                
-                // 如果你的置中也包含「上下垂直置中」，請將下方 y 的公式改成：
-                // const y = (canvas.height - pHeight) / 2;
-                // 如果只需左右置中、下方維持原本的高度抬升，則保留此行：
                 const y = canvas.height - pHeight - 110; 
 
                 ctx.drawImage(portraitImg, x, y, pWidth, pHeight);
-                
-                // 🌟 修正 3：將原本在這裡的 ctx.restore(); 刪除，讓灰階濾鏡持續開啟
 
                 decoImg.src = decoUrl;
                 decoImg.onload = () => {
                     ctx.drawImage(decoImg, 0, 0, canvas.width, canvas.height);
                     
-                    // 🌟 修正 3 續：將 ctx.restore() 移到這裡。
-                    // 確保裝飾圖（decoImg）也套用到灰階濾鏡繪製完成後，才恢復畫布狀態。
+                    // 確保裝飾圖（decoImg）也套用到灰階濾鏡繪製完成後，才恢復畫布狀態
                     ctx.restore(); 
+                    
+                    // 🌟 新增：將體驗者輸入的文字繪製在最上層
+                    if (customText) {
+                        ctx.font = "bold 60px 'Noto Sans TC', sans-serif"; // 設定字體與大小
+                        ctx.fillStyle = "#FFFFFF"; // 設定字體為白色
+                        ctx.textAlign = "center";  // 水平置中
+                        ctx.textBaseline = "bottom"; // 垂直對齊底部
+
+                        // 加上黑色描邊，確保在任何背景上文字都很清楚
+                        ctx.lineWidth = 10;
+                        ctx.strokeStyle = "#000000";
+
+                        // 計算文字位置：水平正中間，垂直貼近畫布底部往上 40px
+                        const textX = canvas.width / 2;
+                        const textY = canvas.height - 40; 
+
+                        // 先畫黑色描邊，再畫白色實體，才會有漫畫字幕感
+                        ctx.strokeText(customText, textX, textY);
+                        ctx.fillText(customText, textX, textY);
+                    }
                     
                     resolve(canvas.toDataURL('image/png'));
                 };
@@ -166,6 +183,7 @@ async function combineImages(portraitUrl, templateUrl, decoUrl) {
 }
 
 // --- 4. 互動與轉換邏輯 ---
+// --- 4. 互動與轉換邏輯 ---
 generateBtn.onclick = () => {
     generateBtn.classList.add('hidden');
     reTakeBtn.classList.add('hidden');
@@ -173,15 +191,35 @@ generateBtn.onclick = () => {
     statusText.parentElement.classList.add('hidden'); 
     
     eggModal.classList.remove('hidden');
+    
+    // 🌟 隱藏原本的開始孵化介紹，顯示輸入文字區塊
+    eggIntro.classList.add('hidden'); 
+    textInputSection.classList.remove('hidden');
 };
 
-startHatchBtn.onclick = () => {
-    eggIntro.classList.add('hidden');
+// 🌟 新增：點擊「開始穿越」的按鈕邏輯
+startIsekaiBtn.onclick = () => {
+    const text = roleInput.value.trim();
+    if (text.length === 0) {
+        alert("請輸入你想成為的角色！");
+        return;
+    }
+    if (text.length > 10) {
+        alert("字數請限制在 10 字以內！");
+        return;
+    }
+
+    userRoleText = text; // 存下玩家輸入的文字
+
+    // 隱藏輸入區，顯示孵蛋區，並開始跑 AI
+    textInputSection.classList.add('hidden');
     eggInteraction.classList.remove('hidden');
     
     processAI();
     setupEggInteraction();
 };
+
+// (原本的 startHatchBtn.onclick 邏輯就可以刪除了，因為被 startIsekaiBtn 取代)
 
 function setupEggInteraction() {
     let lastX = null, lastY = null;
@@ -221,17 +259,17 @@ function setupEggInteraction() {
 function addProgress() {
     if (currentStep >= MAX_STEPS) return;
 
-    // 前 30 段正常隨著撫摸遞增
-    if (currentStep < 30) {
+    // 前 80 段正常隨著撫摸遞增
+    if (currentStep < 80) {
         currentStep++;
     } 
-    // 當達到第 30 段時的特殊處理
-    else if (currentStep === 30) {
+    // 當達到第 80 段時的特殊處理
+    else if (currentStep === 80) {
         if (isAiDone) {
-            // AI 好了，直接填滿第 31 段
-            currentStep = 31;
+            // AI 好了，直接填滿第 81 段
+            currentStep = 81;
         } else {
-            // AI 尚未準備好，強制卡在第 30 段並提示使用者持續撫摸
+            // AI 尚未準備好，強制卡在第 80 段並提示使用者持續撫摸
             eggStatusText.innerText = "✨ 再差一點就能加載成功了，請持續撫摸！";
             theEgg.classList.add('egg-shaking-fast');
         }
@@ -239,8 +277,8 @@ function addProgress() {
     
     updateEggVisuals();
 
-    // 達到第 31 段 (滿進度) 且 AI 完成時跳轉
-    if (currentStep === 31 && isAiDone) {
+    // 達到第 81 段 (滿進度) 且 AI 完成時跳轉
+    if (currentStep === 81 && isAiDone) {
         hatchAndRedirect();
     }
 }
@@ -251,13 +289,13 @@ function updateEggVisuals() {
     eggProgress.style.width = `${progressPercent}%`;
     
     // 依據段數觸發裂痕動畫 (大約 1/3 與 2/3 的進度點)
-    if (currentStep > 10 && currentStep <= 20) {
+    if (currentStep > 26 && currentStep <= 53) {
         theEgg.classList.add('egg-shaking');
         theEgg.classList.add('cracked-1');
     }
-    if (currentStep > 20 && currentStep <= 31) {
+    if (currentStep > 53 && currentStep <= 81) {
         theEgg.classList.add('cracked-2');
-        if(!isAiDone && currentStep < 30) {
+        if(!isAiDone && currentStep < 80) {
             eggStatusText.innerText = "🥚 蛋殼出現裂痕了，繼續輕撫！";
         }
     }
@@ -298,7 +336,7 @@ async function processAI() {
             finalPortraitDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
         }
 
-        const finalPngUrl = await combineImages(finalPortraitDataUrl, TEMPLATE_URL, DECO_URL);
+        const finalPngUrl = await combineImages(finalPortraitDataUrl, TEMPLATE_URL, DECO_URL, userRoleText);
 
         const formData = new FormData();
         formData.append("image", finalPngUrl.split(',')[1]);
@@ -313,15 +351,15 @@ async function processAI() {
             finalDownloadUrl = uploadData.data.url;
             isAiDone = true; 
             
-            // 情況 A：玩家還沒摸滿 30 下 (< 30) -> 甚麼都不做，讓玩家繼續摸
-            if (currentStep < 30) {
+            // 情況 A：玩家還沒摸滿 80 下 (< 80) -> 甚麼都不做，讓玩家繼續摸
+            if (currentStep < 80) {
                 // 可選：在此印出 console.log 供開發者確認 AI 已準備完畢
                 console.log("圖片已就緒，等待玩家完成撫摸");
             } 
-            // 情況 B：玩家已經摸滿 30 下，正在卡著等 AI
-            // -> 圖片一好，立刻自動填滿最後第 31 段並觸發跳轉
-            else if (currentStep === 30) {
-                currentStep = 31;
+            // 情況 B：玩家已經摸滿 80 下，正在卡著等 AI
+            // -> 圖片一好，立刻自動填滿最後第 81 段並觸發跳轉
+            else if (currentStep === 80) {
+                currentStep = 81;
                 updateEggVisuals();
                 hatchAndRedirect();
             }

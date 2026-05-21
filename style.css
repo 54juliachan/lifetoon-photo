@@ -421,3 +421,29 @@ button:disabled {
     transform: translate(-50%, -50%) scale(200);
     z-index: 200;
 }
+#textInputSection {
+    text-align: center;
+    padding: 20px;
+}
+
+#textInputSection h2 {
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+#roleInput {
+    width: 80%;
+    padding: 12px;
+    font-size: 1.1rem;
+    border: 2px solid #333;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+.input-note {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 20px;
+}
