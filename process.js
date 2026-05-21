@@ -129,18 +129,32 @@ async function combineImages(portraitUrl, templateUrl, decoUrl) {
             portraitImg.onload = () => {
                 ctx.save(); 
                 ctx.filter = 'grayscale(100%) contrast(120%)';
-                const scale = 0.7; 
+                
+                // 🌟 修正 1：調整人像高度比例為畫布的 90% (原本為 0.7)
+                const scale = 0.9; 
                 const pHeight = canvas.height * scale;
                 const pWidth = (portraitImg.width / portraitImg.height) * pHeight;
-                const x = canvas.width - pWidth - 0; 
+                
+                // 🌟 修正 2：將 x 座標改為畫布寬度減去圖片寬度除以 2，達到「左右置中」
+                const x = (canvas.width - pWidth) / 2; 
+                
+                // 如果你的置中也包含「上下垂直置中」，請將下方 y 的公式改成：
+                // const y = (canvas.height - pHeight) / 2;
+                // 如果只需左右置中、下方維持原本的高度抬升，則保留此行：
                 const y = canvas.height - pHeight - 110; 
 
                 ctx.drawImage(portraitImg, x, y, pWidth, pHeight);
-                ctx.restore(); 
+                
+                // 🌟 修正 3：將原本在這裡的 ctx.restore(); 刪除，讓灰階濾鏡持續開啟
 
                 decoImg.src = decoUrl;
                 decoImg.onload = () => {
                     ctx.drawImage(decoImg, 0, 0, canvas.width, canvas.height);
+                    
+                    // 🌟 修正 3 續：將 ctx.restore() 移到這裡。
+                    // 確保裝飾圖（decoImg）也套用到灰階濾鏡繪製完成後，才恢復畫布狀態。
+                    ctx.restore(); 
+                    
                     resolve(canvas.toDataURL('image/png'));
                 };
                 decoImg.onerror = () => reject(`載入裝飾圖失敗: ${decoUrl}`);
