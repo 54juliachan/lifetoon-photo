@@ -164,7 +164,7 @@ async function combineImages(portraitUrl, templateUrl, decoUrl, customText) { //
                         ctx.strokeStyle = "#FFFFFF";
 
                         // 計算文字位置：水平正中間，垂直貼近畫布底部往上 40px
-                        const textX = canvas.width / 2;
+                        const textX = 50;
                         const textY = canvas.height - 80; 
 
                         // 先畫黑色描邊，再畫白色實體，才會有漫畫字幕感
