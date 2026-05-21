@@ -26,9 +26,10 @@ const eggStatusText = document.getElementById('eggStatusText');
 const eggGlow = document.getElementById('eggGlow');
 
 // --- 狀態變數 ---
-let petProgress = 0;
+let currentStep = 0;       // 改為步數計算 (0 到 31)
+const MAX_STEPS = 31;      // 總共 31 段
 let isAiDone = false;
-let isHatching = false; // 防止重複觸發跳轉
+let isHatching = false; 
 let finalDownloadUrl = null;
 
 // 1. 頁面載入時，立即從 Session 讀取照片
@@ -178,10 +179,9 @@ function setupEggInteraction() {
 
         if (lastX !== null && lastY !== null) {
             let dist = Math.sqrt(Math.pow(clientX - lastX, 2) + Math.pow(clientY - lastY, 2));
-            // 每次滑動距離超過 15px 才算作一次有效撫摸
+            // 每次滑動超過 15px 算作一次有效撫摸
             if (dist > 15) { 
-                // 100 / 30 = 3.34，確保玩家必須紮實滑動約 30 次才會滿 100%
-                addProgress(3.34); 
+                addProgress(); 
                 lastX = clientX;
                 lastY = clientY;
             }
@@ -204,46 +204,53 @@ function setupEggInteraction() {
     theEgg.addEventListener('mouseup', endTouch);
 }
 
-function addProgress(amount) {
-    if (petProgress >= 100) return;
-    
-    petProgress += amount;
-    
-    // 規則 2：如果撫摸超過 30 下但 AI 還沒好，嚴格卡在 99%
-    if (petProgress >= 99 && !isAiDone) {
-        petProgress = 99; 
-        eggStatusText.innerText = "✨ 差一點點了，再加油一下！";
-        theEgg.classList.add('egg-shaking-fast');
-    } else if (petProgress >= 100) {
-        petProgress = 100;
+function addProgress() {
+    if (currentStep >= MAX_STEPS) return;
+
+    // 前 30 段正常隨著撫摸遞增
+    if (currentStep < 30) {
+        currentStep++;
+    } 
+    // 當達到第 30 段時的特殊處理
+    else if (currentStep === 30) {
+        if (isAiDone) {
+            // AI 好了，直接填滿第 31 段
+            currentStep = 31;
+        } else {
+            // AI 尚未準備好，強制卡在第 30 段並提示使用者持續撫摸
+            eggStatusText.innerText = "✨ 再差一點就能加載成功了，請持續撫摸！";
+            theEgg.classList.add('egg-shaking-fast');
+        }
     }
     
     updateEggVisuals();
 
-    // 規則 1：必須滿 100% (代表摸滿 30 下) 且 AI 完成才能跳轉
-    if (petProgress >= 100 && isAiDone) {
+    // 達到第 31 段 (滿進度) 且 AI 完成時跳轉
+    if (currentStep === 31 && isAiDone) {
         hatchAndRedirect();
     }
 }
 
 function updateEggVisuals() {
-    eggProgress.style.width = `${petProgress}%`;
+    // 將當前的步數轉換為進度條百分比
+    let progressPercent = (currentStep / MAX_STEPS) * 100;
+    eggProgress.style.width = `${progressPercent}%`;
     
-    if (petProgress > 30 && petProgress <= 60) {
+    // 依據段數觸發裂痕動畫 (大約 1/3 與 2/3 的進度點)
+    if (currentStep > 10 && currentStep <= 20) {
         theEgg.classList.add('egg-shaking');
         theEgg.classList.add('cracked-1');
     }
-    if (petProgress > 60 && petProgress < 100) {
+    if (currentStep > 20 && currentStep <= 31) {
         theEgg.classList.add('cracked-2');
-        // 確保不會覆蓋掉 99% 的提示文字
-        if(!isAiDone && petProgress < 99) {
+        if(!isAiDone && currentStep < 30) {
             eggStatusText.innerText = "🥚 蛋殼出現裂痕了，繼續輕撫！";
         }
     }
 }
 
 function hatchAndRedirect() {
-    if (isHatching) return; // 防止重複觸發
+    if (isHatching) return; 
     isHatching = true;
 
     eggStatusText.innerText = "🌟 孵化完成！";
@@ -262,7 +269,7 @@ async function processAI() {
         const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
         const base64Data = capturedPhotoDataUrl.split(',')[1];
         const imagePart = { inlineData: { data: base64Data, mimeType: "image/jpeg" } };
-        const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a portrait from the hips up, a slightly parted mouth, gently widened eyes, and raised eyebrows, expressing mild surprise. Two hands are gently raised to her chest with fingers loosely open. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, shading represented using manga-style screentone dots. The image should be in a vertical 3:5 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";         
+        const prompt = "Convert into a classic Japanese black and white manga style portrait. Use clean line art, dramatic screentone shading, and professional ink strokes. Flatter facial planes with a simplified nose and lips, following stylized manga facial proportions. Eyes should be expressive but not hyper-realistic. Use solid fluorescent green color (#00FF00) with no background elements, no scenery, and no textures, focusing entirely on the character. The person should be shown as a portrait from the hips up, holding a sheet of paper in their hands, with a surprised and delighted facial expression. Add a clean white outline or border around the outer edge of the portrait, clearly separating the character from the background. The entire portrait should be rendered strictly in black and white, shading represented using manga-style screentone dots. The image should be in a vertical 3:5 aspect ratio. The framing should be tight: the top of the head aligns exactly with the top edge of the image without being cropped, and both elbows touch the left and right edges of the frame while remaining fully visible and not cut off.";         
         
         const result = await model.generateContent([prompt, imagePart]);
         const response = await result.response;
@@ -292,16 +299,15 @@ async function processAI() {
             finalDownloadUrl = uploadData.data.url;
             isAiDone = true; 
             
-            // 情況 A：AI 提早完成，但玩家還沒摸滿 30 下 (< 99%)
-            // -> 什麼都不做，不自動補滿，讓玩家繼續摸完剩下的進度。
-            if (petProgress < 99) {
-                // 如果需要可以開啟這行提示玩家
-                // eggStatusText.innerText = "⚡ 故事能量已備妥，請繼續完成孵化！";
+            // 情況 A：玩家還沒摸滿 30 下 (< 30) -> 甚麼都不做，讓玩家繼續摸
+            if (currentStep < 30) {
+                // 可選：在此印出 console.log 供開發者確認 AI 已準備完畢
+                console.log("圖片已就緒，等待玩家完成撫摸");
             } 
-            // 情況 B：玩家早就摸滿 30 下卡在 99% 乾等 AI
-            // -> AI 一完成，立即突破 100% 並觸發破殼跳轉
-            else {
-                petProgress = 100;
+            // 情況 B：玩家已經摸滿 30 下，正在卡著等 AI
+            // -> 圖片一好，立刻自動填滿最後第 31 段並觸發跳轉
+            else if (currentStep === 30) {
+                currentStep = 31;
                 updateEggVisuals();
                 hatchAndRedirect();
             }
