@@ -179,8 +179,8 @@ function setupEggInteraction() {
 
         if (lastX !== null && lastY !== null) {
             let dist = Math.sqrt(Math.pow(clientX - lastX, 2) + Math.pow(clientY - lastY, 2));
-            // 每次滑動超過 15px 算作一次有效撫摸
-            if (dist > 15) { 
+            // 每次滑動超過 100px 算作一次有效撫摸
+            if (dist > 100) { 
                 addProgress(); 
                 lastX = clientX;
                 lastY = clientY;
