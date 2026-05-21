@@ -447,11 +447,11 @@ button:disabled {
     color: #666;
     margin-bottom: 20px;
 }
-/* 針對 iOS/iPadOS PWA 喚不出鍵盤的修正 */
-input, textarea {
-    -webkit-user-select: auto !important;
-    user-select: auto !important;
-    
-    /* 確保元素可以被正常點擊與聚焦 */
-    pointer-events: auto !important; 
+/* --- iPad PWA 虛擬鍵盤強制喚醒修正 --- */
+#roleInput {
+    -webkit-user-select: text !important;
+    user-select: text !important;
+    pointer-events: auto !important;
+    cursor: text !important;          /* 🌟 關鍵1：讓系統認定這是文字輸入區 */
+    touch-action: manipulation !important; /* 🌟 關鍵2：允許原生的點擊互動，但禁止雙擊縮放 */
 }
