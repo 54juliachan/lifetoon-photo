@@ -447,3 +447,11 @@ button:disabled {
     color: #666;
     margin-bottom: 20px;
 }
+/* 針對 iOS/iPadOS PWA 喚不出鍵盤的修正 */
+input, textarea {
+    -webkit-user-select: auto !important;
+    user-select: auto !important;
+    
+    /* 確保元素可以被正常點擊與聚焦 */
+    pointer-events: auto !important; 
+}
