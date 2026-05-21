@@ -455,3 +455,11 @@ button:disabled {
     cursor: text !important;          /* 🌟 關鍵1：讓系統認定這是文字輸入區 */
     touch-action: manipulation !important; /* 🌟 關鍵2：允許原生的點擊互動，但禁止雙擊縮放 */
 }
+/* 確保整個輸入容器都不會阻擋原生觸控行為 */
+#textInputSection {
+    text-align: center;
+    padding: 20px;
+    -webkit-user-select: auto !important;
+    user-select: auto !important;
+    pointer-events: auto !important;
+}

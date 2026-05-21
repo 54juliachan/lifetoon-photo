@@ -27,26 +27,6 @@ const eggGlow = document.getElementById('eggGlow');
 
 const textInputSection = document.getElementById('textInputSection');
 const roleInput = document.getElementById('roleInput');
-// --- 針對 iPad PWA 鍵盤彈出的修復邏輯 ---
-roleInput.addEventListener('touchstart', (e) => {
-    // 阻止事件往上傳遞，避免觸發到可能存在的隱藏防呆
-    e.stopPropagation(); 
-});
-
-roleInput.addEventListener('focus', () => {
-    // 🌟 當輸入框被點擊時，暫時解開 body 的鎖定，讓鍵盤能順利把畫面往上推
-    document.body.style.overflow = 'auto';
-    document.body.style.height = '100%';
-});
-
-roleInput.addEventListener('blur', () => {
-    // 🌟 當輸入完畢（鍵盤收起）時，把機台的防滑動鎖定加回來
-    document.body.style.overflow = 'hidden';
-    document.body.style.height = '100vh';
-    
-    // 將畫面滾回最上方，避免鍵盤收合後畫面位置跑掉
-    window.scrollTo(0, 0); 
-});
 const startIsekaiBtn = document.getElementById('startIsekaiBtn');
 // --- 狀態變數 ---
 let currentStep = 0;       // 改為步數計算 (0 到 81)
