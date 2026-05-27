@@ -463,3 +463,20 @@ button:disabled {
     user-select: auto !important;
     pointer-events: auto !important;
 }
+
+/* =========================================
+   🌟 新增：解決 iOS 虛擬鍵盤彈不出來的問題
+   ========================================= */
+
+/* 讓 iOS 原生輸入框樣式重置，避免渲染衝突 */
+input, textarea, [contenteditable] {
+    -webkit-appearance: none;
+    border-radius: 8px;
+}
+
+/* 當需要輸入文字時，動態套用此 class 來解除鎖死 */
+body.keyboard-active {
+    overflow: auto !important;
+    height: auto !important; 
+    overscroll-behavior: auto !important;
+}

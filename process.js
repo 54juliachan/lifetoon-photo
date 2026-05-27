@@ -226,8 +226,24 @@ generateBtn.onclick = () => {
     eggIntro.classList.add('hidden'); 
     textInputSection.classList.remove('hidden');
 
+    // 🌟 關鍵修復 1：解除 body 鎖定，讓 iOS 鍵盤有空間彈出
+    document.body.classList.add('keyboard-active');
+
+    // 🌟 關鍵修復 2：利用這一次的「按鈕點擊」權限，同步強制讓 input 取得焦點喚醒鍵盤
+    roleInput.focus();
+
     aiPortraitPromise = fetchAIPortrait(); 
 };
+
+// 🌟 關鍵修復 3：針對手動點擊輸入框的防呆 (解決 iOS 觸控吞噬)
+roleInput.addEventListener('touchstart', (e) => {
+    e.stopPropagation(); // 阻止事件冒泡，避免被其他防止預設的行為攔截
+}, { passive: false });
+
+roleInput.addEventListener('touchend', (e) => {
+    // 當使用者手指離開螢幕的瞬間，強制聚焦
+    roleInput.focus();
+});
 
 startIsekaiBtn.onclick = () => {
     const text = roleInput.value.trim();
@@ -241,6 +257,10 @@ startIsekaiBtn.onclick = () => {
     }
 
     userRoleText = text; 
+
+    // 🌟 關鍵修復 4：輸入完成後，強制收起鍵盤並把 body 鎖死狀態恢復
+    roleInput.blur();
+    document.body.classList.remove('keyboard-active');
 
     textInputSection.classList.add('hidden');
     eggInteraction.classList.remove('hidden');
