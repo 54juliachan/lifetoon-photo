@@ -11,7 +11,6 @@ const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 const TEMPLATE_URL = templateSrc;
-
 // 將五款裝飾圖放入一個陣列中備用
 const DECO_OPTIONS = [deco1, deco2, deco3, deco4, deco5];
 
@@ -35,13 +34,16 @@ const eggGlow = document.getElementById('eggGlow');
 const textInputSection = document.getElementById('textInputSection');
 const roleInput = document.getElementById('roleInput');
 const startIsekaiBtn = document.getElementById('startIsekaiBtn');
+
 // --- 狀態變數 ---
-let currentStep = 0;       // 改為步數計算 (0 到 81)
-const MAX_STEPS = 81;      // 總共 81 段
+let currentStep = 0;       
+const MAX_STEPS = 81;      
 let isAiDone = false;
 let isHatching = false; 
 let finalDownloadUrl = null;
-let userRoleText = ""; // 儲存玩家輸入的文字
+let userRoleText = ""; 
+// 用來儲存背景偷跑的 AI 生成進度
+let aiPortraitPromise = null; 
 
 // 1. 頁面載入時，立即從 Session 讀取照片
 const capturedPhotoDataUrl = sessionStorage.getItem('capturedPhoto');
@@ -118,7 +120,7 @@ async function chromaKeyAndCrop(base64Data, mimeType) {
 }
 
 // 3. 圖片合成邏輯
-async function combineImages(portraitUrl, templateUrl, decoUrl, customText) { // 🌟 修正：新增了 customText 參數
+async function combineImages(portraitUrl, templateUrl, decoUrl, customText) { 
     return new Promise((resolve, reject) => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -141,12 +143,10 @@ async function combineImages(portraitUrl, templateUrl, decoUrl, customText) { //
                 ctx.save(); 
                 ctx.filter = 'grayscale(100%) contrast(120%)';
                 
-                // 調整人像高度比例為畫布的 90%
                 const scale = 0.9; 
                 const pHeight = canvas.height * scale;
                 const pWidth = (portraitImg.width / portraitImg.height) * pHeight;
                 
-                // 置中對齊
                 const x = (canvas.width - pWidth) / 2; 
                 const y = canvas.height - pHeight - 10; 
 
@@ -156,41 +156,32 @@ async function combineImages(portraitUrl, templateUrl, decoUrl, customText) { //
                 decoImg.onload = () => {
                     ctx.drawImage(decoImg, 0, 0, canvas.width, canvas.height);
                     
-                    // 確保裝飾圖（decoImg）也套用到灰階濾鏡繪製完成後，才恢復畫布狀態
                     ctx.restore(); 
                     
-                    // 🌟 新增：將體驗者輸入的文字繪製在最上層
                     if (customText) {
-                        ctx.font = "bold 35px 'Noto Sans TC', sans-serif"; // 設定字體與大小
-                        ctx.fillStyle = "#000000"; // 設定字體為黑色
-                        ctx.textAlign = "left";  // 靠左對齊
-                        ctx.textBaseline = "bottom"; // 垂直對齊底部
+                        ctx.font = "bold 35px 'Noto Sans TC', sans-serif"; 
+                        ctx.fillStyle = "#000000"; 
+                        ctx.textAlign = "left";  
+                        ctx.textBaseline = "bottom"; 
 
-                        // 加上白色描邊，確保在任何背景上文字都很清楚
                         ctx.lineWidth = 5;
                         ctx.strokeStyle = "#FFFFFF";
 
-                        // 計算文字位置：靠左 15px，垂直貼近畫布底部往上 10px
                         const textX = 15;
                         const textY = canvas.height - 10; 
 
-                        // 先畫白色描邊，再畫黑色實體，才會有漫畫字幕感
                         ctx.strokeText(customText, textX, textY);
                         ctx.fillText(customText, textX, textY);
                     }
                     
-                    // --- 🌟 新增：全圖黑白濾鏡處理 🌟 ---
-                    // 1. 取得畫布上包含底圖、人像、裝飾與文字的所有像素
                     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                     const data = imageData.data;
 
-                    // 2. 遍歷並將每個像素轉換為符合視覺亮度的灰階值
                     for (let i = 0; i < data.length; i += 4) {
                         const r = data[i];     
                         const g = data[i + 1]; 
                         const b = data[i + 2]; 
 
-                        // 亮度計算公式
                         const gray = 0.299 * r + 0.587 * g + 0.114 * b;
 
                         data[i] = gray;     
@@ -198,9 +189,7 @@ async function combineImages(portraitUrl, templateUrl, decoUrl, customText) { //
                         data[i + 2] = gray; 
                     }
 
-                    // 3. 將全黑白的像素覆蓋回畫布
                     ctx.putImageData(imageData, 0, 0);
-                    // ------------------------------------------------
                     
                     resolve(canvas.toDataURL('image/png'));
                 };
@@ -221,12 +210,13 @@ generateBtn.onclick = () => {
     
     eggModal.classList.remove('hidden');
     
-    // 🌟 隱藏原本的開始孵化介紹，顯示輸入文字區塊
     eggIntro.classList.add('hidden'); 
     textInputSection.classList.remove('hidden');
+
+    // 🌟 關鍵修改：進入「輸入文字」畫面的瞬間，背景同步呼叫 AI 開始畫圖與去背！
+    aiPortraitPromise = fetchAIPortrait(); 
 };
 
-// 🌟 新增：點擊「開始穿越」的按鈕邏輯
 startIsekaiBtn.onclick = () => {
     const text = roleInput.value.trim();
     if (text.length === 0) {
@@ -238,17 +228,15 @@ startIsekaiBtn.onclick = () => {
         return;
     }
 
-    userRoleText = text; // 存下玩家輸入的文字
+    userRoleText = text; 
 
-    // 隱藏輸入區，顯示孵蛋區，並開始跑 AI
     textInputSection.classList.add('hidden');
     eggInteraction.classList.remove('hidden');
     
-    processAI();
+    // 🌟 關鍵修改：使用者按下穿越後，進入下半部的合成與上傳流程
+    finishAIProcessing();
     setupEggInteraction();
 };
-
-// (原本的 startHatchBtn.onclick 邏輯就可以刪除了，因為被 startIsekaiBtn 取代)
 
 function setupEggInteraction() {
     let lastX = null, lastY = null;
@@ -260,7 +248,6 @@ function setupEggInteraction() {
 
         if (lastX !== null && lastY !== null) {
             let dist = Math.sqrt(Math.pow(clientX - lastX, 2) + Math.pow(clientY - lastY, 2));
-            // 每次滑動超過 100px 算作一次有效撫摸
             if (dist > 100) { 
                 addProgress(); 
                 lastX = clientX;
@@ -288,17 +275,13 @@ function setupEggInteraction() {
 function addProgress() {
     if (currentStep >= MAX_STEPS) return;
 
-    // 前 80 段正常隨著撫摸遞增
     if (currentStep < 80) {
         currentStep++;
     } 
-    // 當達到第 80 段時的特殊處理
     else if (currentStep === 80) {
         if (isAiDone) {
-            // AI 好了，直接填滿第 81 段
             currentStep = 81;
         } else {
-            // AI 尚未準備好，強制卡在第 80 段並提示使用者持續撫摸
             eggStatusText.innerText = "✨ 再差一點就能加載成功了，請持續撫摸！";
             theEgg.classList.add('egg-shaking-fast');
         }
@@ -306,18 +289,15 @@ function addProgress() {
     
     updateEggVisuals();
 
-    // 達到第 81 段 (滿進度) 且 AI 完成時跳轉
     if (currentStep === 81 && isAiDone) {
         hatchAndRedirect();
     }
 }
 
 function updateEggVisuals() {
-    // 將當前的步數轉換為進度條百分比
     let progressPercent = (currentStep / MAX_STEPS) * 100;
     eggProgress.style.width = `${progressPercent}%`;
     
-    // 依據段數觸發裂痕動畫 (大約 1/3 與 2/3 的進度點)
     if (currentStep > 26 && currentStep <= 53) {
         theEgg.classList.add('egg-shaking');
         theEgg.classList.add('cracked-1');
@@ -344,8 +324,8 @@ function hatchAndRedirect() {
     }, 900); 
 }
 
-// AI 處理核心
-async function processAI() {
+// 🌟 上半部：背景偷跑向 Gemini 要圖 + 綠幕去背
+async function fetchAIPortrait() {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
         const base64Data = capturedPhotoDataUrl.split(',')[1];
@@ -360,18 +340,35 @@ async function processAI() {
 
         let finalPortraitDataUrl;
         try {
+            // 進行去背
             finalPortraitDataUrl = await chromaKeyAndCrop(part.inlineData.data, part.inlineData.mimeType);
         } catch (cropErr) {
             finalPortraitDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
         }
+        
+        // 回傳去背好的人像資料
+        return finalPortraitDataUrl; 
+    } catch (error) {
+        console.error("AI 圖片生成或去背失敗:", error);
+        throw error;
+    }
+}
 
-        // 利用 Math.random() 隨機從陣列中抽選 0 到 4 的索引值
+// 🌟 下半部：等使用者輸入文字後，進行圖層疊合與上傳
+async function finishAIProcessing() {
+    try {
+        // 1. await 會等待 fetchAIPortrait() 完成。
+        // 如果使用者打字打很久，AI 早就畫好了，這裡會「瞬間」通過！
+        const finalPortraitDataUrl = await aiPortraitPromise;
+
+        // 2. 隨機抽取裝飾圖
         const randomIndex = Math.floor(Math.random() * DECO_OPTIONS.length);
         const randomDecoUrl = DECO_OPTIONS[randomIndex];
-        
-        // 將隨機抽中的裝飾圖網址傳入合成函式中
+
+        // 3. 結合去背人像、底圖、隨機裝飾圖與使用者輸入的文字
         const finalPngUrl = await combineImages(finalPortraitDataUrl, TEMPLATE_URL, randomDecoUrl, userRoleText);
 
+        // 4. 上傳到 ImgBB
         const formData = new FormData();
         formData.append("image", finalPngUrl.split(',')[1]);
         formData.append("expiration", 600); 
@@ -385,14 +382,10 @@ async function processAI() {
             finalDownloadUrl = uploadData.data.url;
             isAiDone = true; 
             
-            // 情況 A：玩家還沒摸滿 80 下 (< 80) -> 甚麼都不做，讓玩家繼續摸
+            // 處理孵化進度狀態
             if (currentStep < 80) {
-                // 可選：在此印出 console.log 供開發者確認 AI 已準備完畢
                 console.log("圖片已就緒，等待玩家完成撫摸");
-            } 
-            // 情況 B：玩家已經摸滿 80 下，正在卡著等 AI
-            // -> 圖片一好，立刻自動填滿最後第 81 段並觸發跳轉
-            else if (currentStep === 80) {
+            } else if (currentStep === 80) {
                 currentStep = 81;
                 updateEggVisuals();
                 hatchAndRedirect();
@@ -401,7 +394,7 @@ async function processAI() {
             throw new Error("上傳到 ImgBB 失敗");
         }
     } catch (error) {
-        console.error("處理過程中發生錯誤:", error);
+        console.error("合成或上傳過程中發生錯誤:", error);
         eggModal.classList.add('hidden');
         statusText.parentElement.classList.remove('hidden');
         statusText.innerText = "❌ 處理失敗，請重試或確認網路連線。";
