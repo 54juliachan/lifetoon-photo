@@ -1,12 +1,19 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import templateSrc from './template.png';
-import decoSrc from './decoration.png';
+// 引入五款裝飾圖
+import deco1 from './decoration1.png';
+import deco2 from './decoration2.png';
+import deco3 from './decoration3.png';
+import deco4 from './decoration4.png';
+import deco5 from './decoration5.png';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 const TEMPLATE_URL = templateSrc;
-const DECO_URL = decoSrc;
+
+// 將五款裝飾圖放入一個陣列中備用
+const DECO_OPTIONS = [deco1, deco2, deco3, deco4, deco5];
 
 // --- DOM 元素 ---
 const previewImg = document.getElementById('previewImg');
@@ -358,7 +365,12 @@ async function processAI() {
             finalPortraitDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
         }
 
-        const finalPngUrl = await combineImages(finalPortraitDataUrl, TEMPLATE_URL, DECO_URL, userRoleText);
+        // 利用 Math.random() 隨機從陣列中抽選 0 到 4 的索引值
+        const randomIndex = Math.floor(Math.random() * DECO_OPTIONS.length);
+        const randomDecoUrl = DECO_OPTIONS[randomIndex];
+        
+        // 將隨機抽中的裝飾圖網址傳入合成函式中
+        const finalPngUrl = await combineImages(finalPortraitDataUrl, TEMPLATE_URL, randomDecoUrl, userRoleText);
 
         const formData = new FormData();
         formData.append("image", finalPngUrl.split(',')[1]);
