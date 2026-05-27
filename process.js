@@ -1,6 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import templateSrc from './template.png';
-// 引入五款裝飾圖
 import deco1 from './decoration1.png';
 import deco2 from './decoration2.png';
 import deco3 from './decoration3.png';
@@ -11,8 +10,23 @@ const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 const TEMPLATE_URL = templateSrc;
-// 將五款裝飾圖放入一個陣列中備用
 const DECO_OPTIONS = [deco1, deco2, deco3, deco4, deco5];
+
+// ==========================================
+// 🌟 在這裡設定你的三組 Prompt 
+// ⚠️ 警告：請務必保留與純綠背景 (#00FF00)、黑白 (black and white)、
+// 網點 (screen tones)、比例 (3:5) 相關的指令，否則去背將會失敗！
+// ==========================================
+const PROMPT_OPTIONS = [
+    // 預設：經典漫畫風格
+    "A classic Japanese black and white manga style portrait, rendered with clean lines, energetic screen tone shading, and professional inking brushstrokes. The face features flattened contours and simplified nose and lips, following stylized manga facial proportions. The eyes are vivid and expressive, showing individual character without being overly realistic. A waist-up bust shot of a character with hands open forward and raised to chest height, palms facing outward, displaying a surprised facial expression. A clean white outline borders the portrait, clearly separating the character from the background. The background is a full-frame pure fluorescent green (#00FF00), completely devoid of background elements, scenery, or textures, placing the entire focus on the character. The portrait must be strictly in black and white, with shading using manga-style screen tones. The image must be a vertical 3:5 aspect ratio. Tight composition: the top of the character's head must perfectly align with the top edge of the image and not be cropped; both elbows must touch the left and right edges of the frame and remain completely visible, without being cropped.",
+    
+    // 變體一：熱血少年戰鬥風格 (線條更粗獷、眼神堅定)
+    "A gritty Japanese shonen action manga style portrait, featuring bold, intense inking, heavy crosshatching, and dramatic screen tone shading. The face has sharper contours and detailed, intense eyes showing strong determination and spirit. A waist-up bust shot of a character with hands open forward and raised to chest height, palms facing outward, displaying a shocked yet fierce expression. A clean white outline borders the portrait. The background is a full-frame pure fluorescent green (#00FF00), completely devoid of background elements. The portrait must be strictly in black and white. The image must be a vertical 3:5 aspect ratio. Tight composition: the top of the character's head must perfectly align with the top edge of the image and not be cropped; both elbows must touch the left and right edges of the frame and remain completely visible.",
+    
+    // 變體二：閃亮少女漫畫風格 (線條細膩、星星眼)
+    "A delicate Japanese shojo manga style portrait, featuring fine and elegant linework, soft screen tones, and sparkling, expressive large eyes. The face has gentle, flattened contours and simplified, elegant features. A waist-up bust shot of a character with hands open forward and raised to chest height, palms facing outward, showing an amazed and dreamy expression. A clean white outline borders the portrait. The background is a full-frame pure fluorescent green (#00FF00), completely devoid of background elements. The portrait must be strictly in black and white, with shading using manga-style screen tones. The image must be a vertical 3:5 aspect ratio. Tight composition: the top of the character's head must perfectly align with the top edge of the image and not be cropped; both elbows must touch the left and right edges of the frame and remain completely visible."
+];
 
 // --- DOM 元素 ---
 const previewImg = document.getElementById('previewImg');
@@ -42,7 +56,6 @@ let isAiDone = false;
 let isHatching = false; 
 let finalDownloadUrl = null;
 let userRoleText = ""; 
-// 用來儲存背景偷跑的 AI 生成進度
 let aiPortraitPromise = null; 
 
 // 1. 頁面載入時，立即從 Session 讀取照片
@@ -213,7 +226,6 @@ generateBtn.onclick = () => {
     eggIntro.classList.add('hidden'); 
     textInputSection.classList.remove('hidden');
 
-    // 🌟 關鍵修改：進入「輸入文字」畫面的瞬間，背景同步呼叫 AI 開始畫圖與去背！
     aiPortraitPromise = fetchAIPortrait(); 
 };
 
@@ -233,7 +245,6 @@ startIsekaiBtn.onclick = () => {
     textInputSection.classList.add('hidden');
     eggInteraction.classList.remove('hidden');
     
-    // 🌟 關鍵修改：使用者按下穿越後，進入下半部的合成與上傳流程
     finishAIProcessing();
     setupEggInteraction();
 };
@@ -330,7 +341,14 @@ async function fetchAIPortrait() {
         const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
         const base64Data = capturedPhotoDataUrl.split(',')[1];
         const imagePart = { inlineData: { data: base64Data, mimeType: "image/jpeg" } };
-        const prompt = "A classic Japanese black and white manga style portrait, rendered with clean lines, energetic screen tone shading, and professional inking brushstrokes. The face features flattened contours and simplified nose and lips, following stylized manga facial proportions. The eyes are vivid and expressive, showing individual character without being overly realistic. A waist-up bust shot of a character with both hands clasping the head, displaying an expression of sheer disbelief. A clean white outline borders the portrait, clearly separating the character from the background. The background is a full-frame pure fluorescent green (#00FF00), completely devoid of background elements, scenery, or textures, placing the entire focus on the character. The portrait must be strictly in black and white, with shading using manga-style screen tones. The image must be a vertical 3:5 aspect ratio. Tight composition: the top of the character's head must perfectly align with the top edge of the image and not be cropped; both elbows must touch the left and right edges of the frame and remain completely visible, without being cropped.";        const result = await model.generateContent([prompt, imagePart]);
+        
+        // 🌟 核心改動：從 PROMPT_OPTIONS 陣列中隨機抽取一組 Prompt
+        const randomIndex = Math.floor(Math.random() * PROMPT_OPTIONS.length);
+        const selectedPrompt = PROMPT_OPTIONS[randomIndex];
+        
+        console.log(`正在使用第 ${randomIndex + 1} 組 Prompt 進行生成`);
+        
+        const result = await model.generateContent([selectedPrompt, imagePart]);
         const response = await result.response;
         const part = response.candidates[0].content.parts[0];
 
@@ -338,13 +356,11 @@ async function fetchAIPortrait() {
 
         let finalPortraitDataUrl;
         try {
-            // 進行去背
             finalPortraitDataUrl = await chromaKeyAndCrop(part.inlineData.data, part.inlineData.mimeType);
         } catch (cropErr) {
             finalPortraitDataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
         }
         
-        // 回傳去背好的人像資料
         return finalPortraitDataUrl; 
     } catch (error) {
         console.error("AI 圖片生成或去背失敗:", error);
@@ -355,18 +371,13 @@ async function fetchAIPortrait() {
 // 🌟 下半部：等使用者輸入文字後，進行圖層疊合與上傳
 async function finishAIProcessing() {
     try {
-        // 1. await 會等待 fetchAIPortrait() 完成。
-        // 如果使用者打字打很久，AI 早就畫好了，這裡會「瞬間」通過！
         const finalPortraitDataUrl = await aiPortraitPromise;
 
-        // 2. 隨機抽取裝飾圖
         const randomIndex = Math.floor(Math.random() * DECO_OPTIONS.length);
         const randomDecoUrl = DECO_OPTIONS[randomIndex];
 
-        // 3. 結合去背人像、底圖、隨機裝飾圖與使用者輸入的文字
         const finalPngUrl = await combineImages(finalPortraitDataUrl, TEMPLATE_URL, randomDecoUrl, userRoleText);
 
-        // 4. 上傳到 ImgBB
         const formData = new FormData();
         formData.append("image", finalPngUrl.split(',')[1]);
         formData.append("expiration", 600); 
@@ -380,7 +391,6 @@ async function finishAIProcessing() {
             finalDownloadUrl = uploadData.data.url;
             isAiDone = true; 
             
-            // 處理孵化進度狀態
             if (currentStep < 80) {
                 console.log("圖片已就緒，等待玩家完成撫摸");
             } else if (currentStep === 80) {
